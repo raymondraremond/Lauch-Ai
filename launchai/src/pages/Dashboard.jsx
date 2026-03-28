@@ -1,3 +1,5 @@
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar.jsx'
 import Sidebar from '../components/Sidebar.jsx'
 import { Plus, Zap, TrendingUp, Clock, ArrowRight, ExternalLink, Trash2, MoreHorizontal, Compass, Sparkles } from 'lucide-react'
