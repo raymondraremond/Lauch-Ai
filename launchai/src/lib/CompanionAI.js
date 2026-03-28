@@ -208,7 +208,7 @@ async function callAnthropic(apiKey, systemPrompt, userMessage) {
       'anthropic-dangerous-direct-browser-access': 'true',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-3-5-sonnet-20240620',
       max_tokens: 2048,
       system: systemPrompt,
       messages: [{ role: 'user', content: userMessage }],
@@ -229,7 +229,7 @@ async function callAnthropic(apiKey, systemPrompt, userMessage) {
  */
 async function callGemini(apiKey, systemPrompt, userMessage) {
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -494,8 +494,9 @@ Remember: done is better than perfect. You can always come back and improve late
  * @returns {Promise<{ response: string, provider: string, mode: string }>}
  */
 export async function analyzeWithCompanion(input, contentType, mode) {
-  const anthropicKey = import.meta.env.VITE_ANTHROPIC_API_KEY
-  const geminiKey = import.meta.env.VITE_GOOGLE_API_KEY
+  // Check localStorage first, then fallback to import.meta.env
+  const anthropicKey = localStorage.getItem('VITE_ANTHROPIC_API_KEY') || import.meta.env.VITE_ANTHROPIC_API_KEY
+  const geminiKey    = localStorage.getItem('VITE_GOOGLE_API_KEY') || import.meta.env.VITE_GOOGLE_API_KEY
 
   const systemPrompt = buildSystemPrompt(mode, contentType)
   const userMessage = `Here is my AI-generated output (detected type: ${contentType}):\n\n---\n${input}\n---\n\nPlease analyze this using the ${MODE_PROMPTS[mode]?.label || mode} mode.`

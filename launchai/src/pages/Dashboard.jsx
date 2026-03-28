@@ -1,38 +1,17 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar.jsx'
 import Sidebar from '../components/Sidebar.jsx'
 import { Plus, Zap, TrendingUp, Clock, ArrowRight, ExternalLink, Trash2, MoreHorizontal, Compass, Sparkles } from 'lucide-react'
-
-const DEMO_PROJECTS = [
-  {
-    id: 1,
-    name: 'Invoice Analyzer',
-    desc: 'Extract & categorize invoice data using AI',
-    status: 'live',
-    calls: 342,
-    updated: '2h ago',
-    tag: 'Finance',
-  },
-  {
-    id: 2,
-    name: 'Customer FAQ Bot',
-    desc: 'AI support chatbot trained on your docs',
-    status: 'draft',
-    calls: 0,
-    updated: '1d ago',
-    tag: 'Support',
-  },
-]
+import { getProjects, deleteProject as deleteProjectFromStore } from '../lib/ProjectStore.js'
 
 export default function Dashboard() {
   const navigate  = useNavigate()
-  const [projects, setProjects] = useState(DEMO_PROJECTS)
+  const [projects, setProjects] = useState(getProjects())
 
   const totalCalls = projects.reduce((s, p) => s + p.calls, 0)
 
   function deleteProject(id) {
-    setProjects(prev => prev.filter(p => p.id !== id))
+    const updated = deleteProjectFromStore(id)
+    setProjects(updated)
   }
 
   return (
@@ -104,8 +83,12 @@ export default function Dashboard() {
                         <span className="capitalize tracking-[0.05em]">{p.status}</span>
                       </span>
                       <div className="relative group/menu">
-                        <button className="w-[28px] h-[28px] rounded-[6px] hover:bg-white/5 flex items-center justify-center
-                                           text-secondary hover:text-primary transition-colors">
+                        <button 
+                          onClick={() => navigate('/settings')}
+                          className="w-[28px] h-[28px] rounded-[6px] hover:bg-white/5 flex items-center justify-center
+                                            text-secondary hover:text-primary transition-colors"
+                          title="Project Settings"
+                        >
                           <MoreHorizontal size={14} />
                         </button>
                       </div>
@@ -129,7 +112,7 @@ export default function Dashboard() {
                         <Trash2 size={13} />
                       </button>
                       <button
-                        onClick={() => navigate('/builder')}
+                        onClick={() => navigate(`/builder?id=${p.id}`)}
                         className="flex items-center gap-[4px] font-body text-[13px] text-accent hover:text-accent-hover font-medium transition-colors duration-150"
                       >
                         Open <ArrowRight size={14} />

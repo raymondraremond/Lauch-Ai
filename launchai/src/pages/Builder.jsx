@@ -1,11 +1,13 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect, useCallback } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import Navbar from '../components/Navbar.jsx'
 import Sidebar from '../components/Sidebar.jsx'
 import ChatWidget from '../components/ChatWidget.jsx'
+import { getProjectById, saveProject, getBestPracticeTemplate } from '../lib/ProjectStore.js'
 import {
   Type, AlignLeft, ToggleLeft, List, MessageSquare, BarChart2,
-  Trash2, Move, Eye, Save, Rocket, GripVertical, Plus, Settings2
+  Trash2, Move, Eye, Save, Rocket, GripVertical, Plus, Settings2,
+  Check
 } from 'lucide-react'
 
 const PALETTE = [
@@ -17,22 +19,38 @@ const PALETTE = [
   { type: 'chart',       label: 'Chart',         icon: BarChart2,     preview: <div className="flex items-end gap-[4px] h-[32px]">{[60,40,80,50,90,70].map((h,i)=><div key={i} style={{height:`${h}%`}} className="flex-1 rounded-[2px] bg-accent/40" />)}</div> },
 ]
 
-let uid = 3
 export default function Builder() {
   const navigate = useNavigate()
-  const [components, setComponents]   = useState([
-    { id: 1, type: 'text-input', label: 'Invoice Number' },
-    { id: 2, type: 'textarea',   label: 'Invoice Content' },
-  ])
+  const [searchParams] = useSearchParams()
+  const projectId = searchParams.get('id')
+
+  // State
+  const [projectIdState, setProjectIdState] = useState(projectId ? parseInt(projectId) : null)
+  const [projectName, setProjectName] = useState('Untitled App')
+  const [components, setComponents]   = useState([])
   const [selected, setSelected]       = useState(null)
   const [showPreview, setShowPreview] = useState(false)
-  const [saved, setSaved]             = useState(false)
+  const [isSaving, setIsSaving]       = useState(false)
+  const [saveSuccess, setSaveSuccess] = useState(false)
   const [draggingPalette, setDragging] = useState(null)
   const [labelEdit, setLabelEdit]     = useState({})
+  const [showTemplateModal, setShowTemplateModal] = useState(!projectId)
+
+  // Load project or initialize
+  useEffect(() => {
+    if (projectIdState) {
+      const p = getProjectById(projectIdState)
+      if (p) {
+        setProjectName(p.name)
+        setComponents(p.components || [])
+        setShowTemplateModal(false)
+      }
+    }
+  }, [projectIdState])
 
   function addComponent(type) {
     const def = PALETTE.find(p => p.type === type)
-    setComponents(prev => [...prev, { id: ++uid, type, label: def.label }])
+    setComponents(prev => [...prev, { id: Date.now(), type, label: def.label }])
   }
 
   function removeComponent(id) {
@@ -44,9 +62,33 @@ export default function Builder() {
     setComponents(prev => prev.map(c => c.id === id ? { ...c, label: val } : c))
   }
 
-  function handleSave() {
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+  const handleSave = useCallback(() => {
+    setIsSaving(true)
+    const p = {
+      id: projectIdState,
+      name: projectName,
+      components,
+      status: 'draft'
+    }
+    const saved = saveProject(p)
+    if (!projectIdState) setProjectIdState(saved.id)
+    
+    setTimeout(() => {
+      setIsSaving(false)
+      setSaveSuccess(true)
+      setTimeout(() => setSaveSuccess(false), 2000)
+    }, 800)
+  }, [projectIdState, projectName, components])
+
+  function handleUseTemplate() {
+    const template = getBestPracticeTemplate()
+    setProjectName(template.name)
+    setComponents(template.components)
+    setShowTemplateModal(false)
+  }
+
+  function handleStartBlank() {
+    setShowTemplateModal(false)
   }
 
   return (
@@ -85,13 +127,18 @@ export default function Builder() {
           <div className="flex items-center justify-between px-6 py-3 border-b border-dim bg-base/80 backdrop-blur-md z-10 w-[600px] border-r">
             <div className="flex items-center gap-[12px]">
               <input
-                className="bg-transparent font-body text-[14px] font-medium text-primary outline-none placeholder-text-muted w-[140px] tracking-[-0.01em]"
+                className="bg-transparent font-body text-[14px] font-medium text-primary outline-none placeholder-text-muted w-[140px] tracking-[-0.01em] border-b border-transparent focus:border-accent/30"
                 placeholder="Untitled App"
-                defaultValue="Invoice Analyzer"
+                value={projectName}
+                onChange={e => setProjectName(e.target.value)}
               />
               <span className="badge-draft"><div className="w-[5px] h-[5px] rounded-full mr-[6px] bg-text-muted"></div>Draft</span>
             </div>
             <div className="flex items-center gap-[8px]">
+              <div className="mr-2 flex items-center gap-2">
+                {isSaving && <span className="font-mono text-[9px] text-text-muted uppercase animate-pulse">Saving...</span>}
+                {saveSuccess && <span className="font-mono text-[9px] text-success uppercase flex items-center gap-1"><Check size={10}/> Saved</span>}
+              </div>
               <button
                 onClick={() => setShowPreview(v => !v)}
                 className={`flex items-center gap-[6px] text-[13px] px-[12px] py-[6px] rounded-[6px] border transition-colors duration-150 tracking-[-0.01em]
@@ -101,12 +148,13 @@ export default function Builder() {
               </button>
               <button
                 onClick={handleSave}
-                className="flex items-center gap-[6px] font-body text-[13px] px-[12px] py-[6px] rounded-[6px] border border-base bg-raised text-secondary hover:text-primary hover:border-lit transition-colors duration-150 tracking-[-0.01em]"
+                disabled={isSaving}
+                className="flex items-center gap-[6px] font-body text-[13px] px-[12px] py-[6px] rounded-[6px] border border-base bg-raised text-secondary hover:text-primary hover:border-lit transition-colors duration-150 tracking-[-0.01em] disabled:opacity-50"
               >
-                <Save size={14} className={saved ? 'text-success' : ''} /> {saved ? 'Saved' : 'Save'}
+                <Save size={14} className={saveSuccess ? 'text-success' : ''} /> Save
               </button>
               <button
-                onClick={() => navigate('/dashboard')}
+                onClick={() => navigate('/deploy')}
                 className="btn-primary text-[13px] px-[16px] py-[6px] !rounded-[6px]"
               >
                 <Rocket size={14} /> Deploy
@@ -217,6 +265,52 @@ export default function Builder() {
           </div>
         </aside>
       </div>
+
+      {/* Template Selection Modal */}
+      {showTemplateModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-sm bg-void/60 animate-in fade-in duration-300">
+          <div className="card-premium p-8 max-w-[480px] w-full shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="w-[48px] h-[48px] rounded-[12px] bg-accent-dim border border-glow flex items-center justify-center mb-6">
+              <Sparkles size={24} className="text-accent" />
+            </div>
+            <h2 className="font-display text-[24px] font-semibold text-primary mb-2 tracking-[-0.02em]">Create New AI App</h2>
+            <p className="font-body text-[14px] text-secondary mb-8 leading-[1.6]">
+              How would you like to start? You can begin with a clean slate or use our recommended template for AI platforms.
+            </p>
+            
+            <div className="space-y-3">
+              <button
+                onClick={handleUseTemplate}
+                className="w-full flex items-center justify-between p-4 rounded-[10px] bg-accent/10 border border-accent/30 hover:bg-accent/15 hover:border-accent/50 transition-all text-left group"
+              >
+                <div>
+                  <p className="font-body font-semibold text-white text-[14px] mb-0.5">Best Practice Template</p>
+                  <p className="font-body text-[12px] text-accent">Recommended for most AI tools</p>
+                </div>
+                <ArrowRight size={16} className="text-accent group-hover:translate-x-1 transition-transform" />
+              </button>
+              
+              <button
+                onClick={handleStartBlank}
+                className="w-full flex items-center justify-between p-4 rounded-[10px] bg-raised border border-base hover:border-lit hover:bg-white/5 transition-all text-left group"
+              >
+                <div>
+                  <p className="font-body font-semibold text-primary text-[14px] mb-0.5">Blank Canvas</p>
+                  <p className="font-body text-[12px] text-text-muted">Start from absolute scratch</p>
+                </div>
+                <ArrowRight size={16} className="text-secondary group-hover:translate-x-1 transition-transform" />
+              </button>
+            </div>
+
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="mt-8 text-[13px] text-text-muted hover:text-secondary transition-colors block mx-auto font-medium"
+            >
+              Cancel and go back
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

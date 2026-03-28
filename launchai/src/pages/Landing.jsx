@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import Navbar from '../components/Navbar.jsx'
 import {
   Zap, ArrowRight, Sparkles, LayoutDashboard, Wand2,
@@ -133,8 +133,8 @@ export default function Landing() {
             <button onClick={() => navigate('/onboarding')} className="btn-primary rounded-[7px] px-[24px] py-[12px] text-[14px]">
               Start building free <ArrowRight size={15} />
             </button>
-            <button onClick={() => navigate('/copilot')} className="btn-ghost rounded-[7px] px-[24px] py-[12px] text-[14px] border-lit text-secondary">
-              Explore the Copilot
+            <button onClick={() => navigate('/dashboard')} className="btn-ghost rounded-[7px] px-[24px] py-[12px] text-[14px] border-lit text-secondary">
+              Go to Dashboard
             </button>
           </div>
 
@@ -270,9 +270,9 @@ export default function Landing() {
           </div>
           <p className="font-body text-[13px] text-text-muted">© 2026 LaunchAI Inc.</p>
           <div className="flex gap-[24px] font-body text-[13px] text-secondary">
-            <a href="#" className="hover:text-primary transition-colors duration-150">Privacy</a>
-            <a href="#" className="hover:text-primary transition-colors duration-150">Terms</a>
-            <a href="#" className="hover:text-primary transition-colors duration-150">Changelog</a>
+            <Link to="/privacy" className="hover:text-primary transition-colors duration-150">Privacy</Link>
+            <Link to="/terms"  className="hover:text-primary transition-colors duration-150">Terms</Link>
+            <Link to="/changelog" className="hover:text-primary transition-colors duration-150">Changelog</Link>
           </div>
         </div>
       </footer>

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { Send, Bot, User, Loader } from 'lucide-react'
 
 const SYSTEM_PROMPT = `You are the LaunchAI Copilot — an expert AI product-building assistant for non-technical founders. 
@@ -39,44 +40,74 @@ export default function ChatWidget({ placeholder = "Ask your AI copilot anything
     setMessages(updated)
     setLoading(true)
 
-    // If no API key, use a demo response
-    if (!apiKey) {
-      await new Promise(r => setTimeout(r, 900))
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: getDemoResponse(text),
-      }])
-      setLoading(false)
-      return
+    // Check localStorage first, then fallback to import.meta.env
+    const anthropicKey = localStorage.getItem('VITE_ANTHROPIC_API_KEY') || import.meta.env.VITE_ANTHROPIC_API_KEY
+    const geminiKey    = localStorage.getItem('VITE_GOOGLE_API_KEY') || import.meta.env.VITE_GOOGLE_API_KEY
+
+    // 1. Try Gemini (Free Tier priority)
+    if (geminiKey) {
+      try {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+              contents: [{ role: 'user', parts: [{ text: text }] }],
+              generationConfig: { maxOutputTokens: 800, temperature: 0.7 },
+            }),
+          }
+        )
+        const data = await res.json()
+        const reply = data.candidates?.[0]?.content?.parts?.[0]?.text
+        if (reply) {
+          setMessages(prev => [...prev, { role: 'assistant', content: reply, provider: 'Gemini' }])
+          setLoading(false)
+          return
+        }
+      } catch (err) {
+        console.error('Gemini failed:', err)
+      }
     }
 
-    try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-        },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 600,
-          system: SYSTEM_PROMPT,
-          messages: updated.map(m => ({ role: m.role, content: m.content })),
-        }),
-      })
-      const data = await res.json()
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: data.content?.[0]?.text || 'Sorry, I had trouble responding. Please try again.',
-      }])
-    } catch {
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: '⚠️ Could not reach the AI. Check your API key in the .env file.',
-      }])
+    // 2. Try Anthropic
+    if (anthropicKey) {
+      try {
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': anthropicKey,
+            'anthropic-version': '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true',
+          },
+          body: JSON.stringify({
+            model: 'claude-3-5-sonnet-20240620',
+            max_tokens: 800,
+            system: SYSTEM_PROMPT,
+            messages: updated.map(m => ({ role: m.role, content: m.content })),
+          }),
+        })
+        const data = await res.json()
+        const reply = data.content?.[0]?.text
+        if (reply) {
+          setMessages(prev => [...prev, { role: 'assistant', content: reply, provider: 'Claude' }])
+          setLoading(false)
+          return
+        }
+      } catch (err) {
+        console.error('Anthropic failed:', err)
+      }
     }
+
+    // 3. Demo Fallback
+    await new Promise(r => setTimeout(r, 900))
+    setMessages(prev => [...prev, {
+      role: 'assistant',
+      content: getDemoResponse(text),
+      provider: 'Demo',
+    }])
     setLoading(false)
   }
 
@@ -91,6 +122,10 @@ export default function ChatWidget({ placeholder = "Ask your AI copilot anything
     return "That's a great question! Let me break that down.\n\nThe key thing to focus on first is **validating the core problem** — not the technology. Tell me:\n\n1. Who experiences this problem?\n2. How often does it happen?\n3. What do they do today to solve it?\n\nOnce we answer those, picking the right AI approach becomes much easier."
   }
 
+  const hasGemini = !!(localStorage.getItem('VITE_GOOGLE_API_KEY') || import.meta.env.VITE_GOOGLE_API_KEY)
+  const hasClaude = !!(localStorage.getItem('VITE_ANTHROPIC_API_KEY') || import.meta.env.VITE_ANTHROPIC_API_KEY)
+  const isLive   = hasGemini || hasClaude
+
   return (
     <div className={`flex flex-col bg-raised border border-base rounded-[12px] overflow-hidden font-body
                      ${compact ? 'h-full flex-1' : 'h-[600px]'}`}>
@@ -102,11 +137,19 @@ export default function ChatWidget({ placeholder = "Ask your AI copilot anything
               ${m.role === 'assistant' ? 'bg-accent-dim text-accent border border-glow' : 'bg-muted text-secondary border border-base'}`}>
               {m.role === 'assistant' ? <Bot size={14} /> : <User size={14} />}
             </div>
-            <div className={`max-w-[80%] text-[13px] leading-[1.65] rounded-[10px] px-4 py-3 whitespace-pre-line tracking-[-0.01em]
-              ${m.role === 'assistant'
-                ? 'bg-overlay text-primary border border-base rounded-tl-[2px]'
-                : 'bg-accent-dim text-primary border border-accent/20 rounded-tr-[2px]'}`}>
-              {m.content}
+            <div className="flex flex-col gap-1 max-w-[80%]">
+              <div className={`text-[13px] leading-[1.65] rounded-[10px] px-4 py-3 whitespace-pre-line tracking-[-0.01em]
+                ${m.role === 'assistant'
+                  ? 'bg-overlay text-primary border border-base rounded-tl-[2px]'
+                  : 'bg-accent-dim text-primary border border-accent/20 rounded-tr-[2px]'}`}>
+                {m.content}
+              </div>
+              {m.provider && (
+                <span className={`font-mono text-[9px] tracking-[0.05em] uppercase px-1
+                  ${m.provider === 'Demo' ? 'text-amber-500' : 'text-accent'}`}>
+                  via {m.provider}
+                </span>
+              )}
             </div>
           </div>
         ))}
@@ -146,9 +189,9 @@ export default function ChatWidget({ placeholder = "Ask your AI copilot anything
                      : <Send size={15} />}
           </button>
         </div>
-        {!apiKey && (
+        {!isLive && (
           <p className="font-mono text-[10px] text-text-muted mt-3 text-center tracking-[0.05em] uppercase">
-            Demo mode — add <code className="text-accent lowercase">VITE_ANTHROPIC_API_KEY</code> to .env for live AI
+            Demo mode — add a key in <Link to="/settings" className="text-accent lowercase hover:underline">Settings</Link> for live AI
           </p>
         )}
       </div>
