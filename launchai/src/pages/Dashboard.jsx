@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar.jsx'
 import Sidebar from '../components/Sidebar.jsx'
-import { Plus, Zap, TrendingUp, Clock, ArrowRight, ExternalLink, Trash2, MoreHorizontal } from 'lucide-react'
+import { Plus, Zap, TrendingUp, Clock, ArrowRight, ExternalLink, Trash2, MoreHorizontal, Compass, Sparkles } from 'lucide-react'
 
 const DEMO_PROJECTS = [
   {
@@ -166,6 +166,37 @@ export default function Dashboard() {
               </button>
             </div>
           </div>
+
+          {/* AI Build Companion CTA */}
+          <button
+            onClick={() => navigate('/companion')}
+            className="mt-[16px] w-full group relative overflow-hidden rounded-[12px] border border-accent/25 
+                       bg-gradient-to-r from-accent/[0.06] to-[#7c3aed]/[0.06] p-[20px] text-left
+                       hover:border-accent/40 hover:from-accent/[0.1] hover:to-[#7c3aed]/[0.1]
+                       transition-all duration-300"
+          >
+            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-accent/40 to-transparent" />
+            <div className="flex items-center gap-[16px]">
+              <div className="w-[44px] h-[44px] rounded-[10px] bg-gradient-to-br from-accent to-[#7c3aed] 
+                              flex items-center justify-center flex-shrink-0 shadow-lg shadow-accent/20
+                              group-hover:shadow-accent/30 transition-shadow">
+                <Compass size={20} className="text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-[8px] mb-[4px]">
+                  <h3 className="font-body text-[15px] font-semibold text-primary tracking-[-0.01em]">
+                    AI Build Companion
+                  </h3>
+                  <span className="font-mono text-[9px] tracking-[0.12em] uppercase px-[6px] py-[2px] rounded-[4px] 
+                                   bg-accent/15 text-accent border border-accent/20">New</span>
+                </div>
+                <p className="font-body text-[13px] text-secondary leading-[1.5]">
+                  Stuck on an AI output? Paste it in and get instant diagnosis, fixes, and step-by-step guidance.
+                </p>
+              </div>
+              <ArrowRight size={16} className="text-accent opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all flex-shrink-0" />
+            </div>
+          </button>
         </div>
       </main>
     </div>

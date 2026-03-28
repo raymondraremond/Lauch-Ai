@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar.jsx'
 import {
   Zap, ArrowRight, Sparkles, LayoutDashboard, Wand2,
-  MessageSquare, Rocket, CheckCircle, Star
+  MessageSquare, Rocket, CheckCircle, Star, Compass
 } from 'lucide-react'
 
 // Custom hook for intersection observer staggered animations
@@ -58,6 +58,12 @@ const features = [
     icon: Zap,
     title: 'Monetization Wizard',
     desc: 'Auto-generates Stripe payment plans, usage dashboards, and growth tips. Building is 20% of the work — we handle the other 80%.',
+  },
+  {
+    icon: Compass,
+    title: 'AI Build Companion',
+    desc: 'Stuck on an AI output? Paste it in and get instant diagnosis, clear explanations, step-by-step fixes, and a complete plan to finish what you started.',
+    highlight: true,
   },
 ]
 
@@ -158,7 +164,7 @@ export default function Landing() {
         </div>
         
         <div className="grid md:grid-cols-3 gap-[24px]">
-          {features.map((f, idx) => (
+          {features.filter(f => !f.highlight).map((f, idx) => (
             <div 
               key={f.title} 
               className={`card-premium card-hover group ${featureVisible ? `animate-fade-up opacity-0` : 'opacity-0'}`} 
@@ -172,6 +178,36 @@ export default function Landing() {
             </div>
           ))}
         </div>
+
+        {/* Highlighted: AI Build Companion */}
+        {features.filter(f => f.highlight).map((f, idx) => (
+          <div 
+            key={f.title}
+            onClick={() => navigate('/onboarding')}
+            className={`mt-[24px] relative overflow-hidden rounded-[12px] border border-accent/25 
+                        bg-gradient-to-r from-accent/[0.06] to-[#7c3aed]/[0.06] p-[24px] cursor-pointer group
+                        hover:border-accent/40 hover:from-accent/[0.08] hover:to-[#7c3aed]/[0.08]
+                        transition-all duration-300 ${featureVisible ? 'animate-fade-up opacity-0' : 'opacity-0'}`}
+            style={{ animationDelay: '420ms' }}
+          >
+            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-accent/40 to-transparent" />
+            <div className="flex items-center gap-[20px]">
+              <div className="w-[44px] h-[44px] rounded-[10px] bg-gradient-to-br from-accent to-[#7c3aed] 
+                              flex items-center justify-center flex-shrink-0 shadow-lg shadow-accent/20">
+                <f.icon size={20} className="text-white" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-[8px] mb-[4px]">
+                  <h3 className="font-body font-semibold text-[15px] text-primary tracking-[-0.01em]">{f.title}</h3>
+                  <span className="font-mono text-[9px] tracking-[0.12em] uppercase px-[6px] py-[2px] rounded-[4px] 
+                                   bg-accent/15 text-accent border border-accent/20">New</span>
+                </div>
+                <p className="font-body font-normal text-[13px] text-secondary leading-[1.65]">{f.desc}</p>
+              </div>
+              <ArrowRight size={16} className="text-accent opacity-40 group-hover:opacity-100 group-hover:translate-x-1 transition-all flex-shrink-0" />
+            </div>
+          </div>
+        ))}
       </section>
 
       {/* Pricing */}

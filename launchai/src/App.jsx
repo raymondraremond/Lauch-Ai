@@ -4,6 +4,7 @@ import Onboarding from './pages/Onboarding.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Builder from './pages/Builder.jsx'
 import Copilot from './pages/Copilot.jsx'
+import Companion from './pages/Companion.jsx'
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
         <Route path="/dashboard"   element={<Dashboard />} />
         <Route path="/builder"     element={<Builder />} />
         <Route path="/copilot"     element={<Copilot />} />
+        <Route path="/companion"   element={<Companion />} />
         <Route path="*"            element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

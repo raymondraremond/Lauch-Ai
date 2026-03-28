@@ -1,12 +1,13 @@
 import { Link, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Wand2, MessageSquare, Rocket, Settings, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, Wand2, MessageSquare, Compass, Rocket, Settings, ChevronRight } from 'lucide-react'
 
 const nav = [
-  { label: 'Dashboard',  icon: LayoutDashboard, path: '/dashboard' },
-  { label: 'AI Builder', icon: Wand2,           path: '/builder'   },
-  { label: 'Copilot',    icon: MessageSquare,   path: '/copilot'   },
-  { label: 'Deploy',     icon: Rocket,          path: '/deploy'    },
-  { label: 'Settings',   icon: Settings,        path: '/settings'  },
+  { label: 'Dashboard',  icon: LayoutDashboard, path: '/dashboard'  },
+  { label: 'AI Builder', icon: Wand2,           path: '/builder'    },
+  { label: 'Copilot',    icon: MessageSquare,   path: '/copilot'    },
+  { label: 'Companion',  icon: Compass,         path: '/companion', isNew: true },
+  { label: 'Deploy',     icon: Rocket,          path: '/deploy'     },
+  { label: 'Settings',   icon: Settings,        path: '/settings'   },
 ]
 
 export default function Sidebar() {
@@ -15,7 +16,7 @@ export default function Sidebar() {
   return (
     <aside className="fixed left-0 top-0 h-full w-[220px] bg-base border-r border-dim flex flex-col z-40 pt-20 pb-6">
       <div className="flex-1 px-3 space-y-1">
-        {nav.map(({ label, icon: Icon, path }) => {
+        {nav.map(({ label, icon: Icon, path, isNew }) => {
           const active = loc.pathname === path
           return (
             <Link
@@ -32,6 +33,10 @@ export default function Sidebar() {
               )}
               <Icon size={15} className={`flex-shrink-0 ${active ? 'text-accent' : 'text-text-muted transition-colors group-hover:text-secondary'}`} />
               <span className="font-medium tracking-[-0.01em]">{label}</span>
+              {isNew && !active && (
+                <span className="ml-auto font-mono text-[8px] tracking-[0.1em] uppercase px-[5px] py-[1px] rounded-[3px] 
+                                 bg-accent/15 text-accent border border-accent/20 leading-[1.4]">New</span>
+              )}
               {active && <ChevronRight size={12} className="ml-auto opacity-50" />}
             </Link>
           )
