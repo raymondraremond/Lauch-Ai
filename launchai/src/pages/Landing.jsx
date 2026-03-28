@@ -1,9 +1,32 @@
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar.jsx'
 import {
   Zap, ArrowRight, Sparkles, LayoutDashboard, Wand2,
   MessageSquare, Rocket, CheckCircle, Star
 } from 'lucide-react'
+
+// Custom hook for intersection observer staggered animations
+function useScrollReveal() {
+  const [isVisible, setIsVisible] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true)
+          observer.unobserve(entry.target)
+        }
+      },
+      { threshold: 0.15 }
+    )
+    if (ref.current) observer.observe(ref.current)
+    return () => observer.disconnect()
+  }, [])
+
+  return [ref, isVisible]
+}
 
 const features = [
   {
@@ -38,15 +61,6 @@ const features = [
   },
 ]
 
-const problems = [
-  'No idea where to start with AI',
-  'Prompt engineering feels like black magic',
-  '"Which tool?" analysis paralysis',
-  'Apps fail silently and you don\'t know why',
-  'Built something great — zero users',
-  'Can\'t turn idea into actual product logic',
-]
-
 const plans = [
   {
     name: 'Free',
@@ -74,199 +88,155 @@ const plans = [
   },
 ]
 
-const steps = [
-  { n: '01', title: 'Describe your idea', desc: 'Tell the copilot what problem you\'re solving. It helps you define the user, validate demand, and scope the MVP.' },
-  { n: '02', title: 'Build with AI guidance', desc: 'The visual builder + AI copilot scaffold your UI, data flows, and AI logic as you describe them in natural language.' },
-  { n: '03', title: 'Deploy & monetize', desc: 'One click publishes your app. The monetization wizard sets up pricing, payments, and analytics in minutes.' },
-]
-
 export default function Landing() {
   const navigate = useNavigate()
+  const [heroRef, heroVisible] = useScrollReveal()
+  const [featureRef, featureVisible] = useScrollReveal()
+  const [pricingRef, pricingVisible] = useScrollReveal()
+
   return (
-    <div className="min-h-screen bg-surface-900 font-body overflow-x-hidden">
+    <div className="min-h-screen bg-void font-body overflow-x-hidden relative text-primary">
+      <div className="grain-overlay"></div>
+      
       <Navbar />
 
-      {/* Hero */}
-      <section className="relative pt-32 pb-24 px-6 text-center overflow-hidden">
-        {/* Background glow */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2
-                          w-[700px] h-[400px] bg-brand-500/8 rounded-full blur-[120px]" />
-          <div className="absolute top-20 left-1/4 w-[300px] h-[300px]
-                          bg-purple-500/5 rounded-full blur-[80px]" />
-        </div>
-
-        <div className="relative max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full
-                          bg-brand-500/10 border border-brand-500/20 text-brand-400 text-xs font-medium mb-6">
-            <Sparkles size={12} />
-            Now in public beta — free to start
+      {/* Hero Section */}
+      <section ref={heroRef} className="relative pt-[120px] pb-[120px] px-6 lg:px-8 max-w-[1120px] mx-auto min-h-[90vh] flex flex-col justify-center">
+        <div className="mesh-glow"></div>
+        <div className="shimmer-line"></div>
+        
+        <div className="relative z-10 w-full flex flex-col items-start md:text-left text-left mt-8">
+          <div className={`inline-flex items-center gap-2 mb-6 ${heroVisible ? 'animate-fade-up stagger-1 opacity-0' : 'opacity-0'}`}>
+            <div className="w-[4px] h-[4px] bg-accent rounded-full animate-pulse-dot"></div>
+            <span className="font-mono text-[11px] tracking-[0.12em] text-accent uppercase">Now in public beta</span>
           </div>
 
-          <h1 className="font-display text-5xl md:text-6xl font-bold leading-tight tracking-tight mb-5">
-            Build AI-powered products
+          <h1 className={`font-display text-[44px] md:text-[72px] font-semibold leading-[1.1] tracking-[-0.03em] mb-6 max-w-[800px] text-white ${heroVisible ? 'animate-fade-up stagger-2 opacity-0' : 'opacity-0'}`}>
+            Build AI products faster. 
             <br />
-            <span className="glow-text">without writing code</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent to-[#7c3aed]">
+              Without writing code.
+            </span>
           </h1>
 
-          <p className="text-lg text-gray-400 max-w-xl mx-auto mb-8 leading-relaxed">
-            From raw idea to live product — guided by an AI copilot that handles the
-            technical complexity, so you can focus on the problem you're solving.
+          <p className={`font-body text-[17px] text-secondary leading-[1.7] max-w-[520px] mb-10 tracking-[-0.01em] ${heroVisible ? 'animate-fade-up stagger-3 opacity-0' : 'opacity-0'}`}>
+            From raw idea to live product — guided by an AI copilot that handles the technical complexity, so you can focus on the problem you're solving.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <button onClick={() => navigate('/onboarding')} className="btn-primary text-base px-6 py-3">
-              Start building free <ArrowRight size={16} />
+          <div className={`flex items-center gap-4 ${heroVisible ? 'animate-fade-up stagger-4 opacity-0' : 'opacity-0'}`}>
+            <button onClick={() => navigate('/onboarding')} className="btn-primary rounded-[7px] px-[24px] py-[12px] text-[14px]">
+              Start building free <ArrowRight size={15} />
             </button>
-            <button onClick={() => navigate('/copilot')} className="btn-ghost text-base px-6 py-3">
-              Try the AI Copilot
+            <button onClick={() => navigate('/copilot')} className="btn-ghost rounded-[7px] px-[24px] py-[12px] text-[14px] border-lit text-secondary">
+              Explore the Copilot
             </button>
           </div>
 
-          <p className="text-xs text-gray-600 mt-4">No credit card required · Deploy in minutes</p>
-        </div>
-      </section>
-
-      {/* Pain points */}
-      <section className="py-16 px-6 bg-surface-800/50 border-y border-white/5">
-        <div className="max-w-4xl mx-auto">
-          <p className="text-center text-sm text-gray-500 mb-8">
-            Sound familiar? You're not alone — these are the top reasons AI products fail.
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {problems.map(p => (
-              <div key={p} className="flex items-start gap-2.5 p-3 rounded-xl bg-surface-700/60 border border-white/5">
-                <span className="text-red-400/70 mt-0.5 text-sm">✕</span>
-                <span className="text-sm text-gray-400">{p}</span>
-              </div>
-            ))}
+          <div className={`mt-[64px] flex items-center justify-start gap-6 divide-x divide-dim/50 ${heroVisible ? 'animate-fade-up stagger-5 opacity-0' : 'opacity-0'}`}>
+            <div className="flex flex-col">
+              <span className="font-mono text-primary text-[14px]">2,400+</span>
+              <span className="font-body text-secondary text-[13px]">Builders</span>
+            </div>
+            <div className="flex flex-col pl-6">
+              <span className="font-mono text-primary text-[14px]">&lt; 14 Days</span>
+              <span className="font-body text-secondary text-[13px]">To Launch</span>
+            </div>
+            <div className="flex flex-col pl-6">
+              <span className="font-mono text-primary text-[14px]">4.9★</span>
+              <span className="font-body text-secondary text-[13px]">Rating</span>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* How it works */}
-      <section id="how" className="py-24 px-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-14">
-            <p className="section-label mb-3">How it works</p>
-            <h2 className="font-display text-3xl font-bold">Idea to product in three steps</h2>
-          </div>
-          <div className="grid md:grid-cols-3 gap-8">
-            {steps.map(s => (
-              <div key={s.n} className="relative">
-                <div className="text-5xl font-display font-bold text-white/5 mb-3 select-none">{s.n}</div>
-                <h3 className="font-semibold text-white text-lg mb-2">{s.title}</h3>
-                <p className="text-sm text-gray-400 leading-relaxed">{s.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
+      {/* Grid: 12-col layout basis for max-w 1120px is mostly flex / CSS grid handles it via max-w */}
       {/* Features */}
-      <section id="features" className="py-24 px-6 bg-surface-800/40 border-y border-white/5">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-14">
-            <p className="section-label mb-3">Features</p>
-            <h2 className="font-display text-3xl font-bold">Everything a non-technical founder needs</h2>
-          </div>
-          <div className="grid md:grid-cols-3 gap-5">
-            {features.map(f => (
-              <div key={f.title} className="card-hover group">
-                <div className="w-9 h-9 rounded-xl bg-brand-500/15 flex items-center justify-center mb-4
-                                group-hover:bg-brand-500/25 transition-colors">
-                  <f.icon size={18} className="text-brand-400" />
-                </div>
-                <h3 className="font-semibold text-white mb-2">{f.title}</h3>
-                <p className="text-sm text-gray-400 leading-relaxed">{f.desc}</p>
+      <section ref={featureRef} id="features" className="py-[120px] px-6 max-w-[1120px] mx-auto relative z-10 border-t border-dim">
+        <div className="shimmer-line"></div>
+        <div className="mb-[48px]">
+          <h2 className="section-label mb-[16px]">Features</h2>
+        </div>
+        
+        <div className="grid md:grid-cols-3 gap-[24px]">
+          {features.map((f, idx) => (
+            <div 
+              key={f.title} 
+              className={`card-premium card-hover group ${featureVisible ? `animate-fade-up opacity-0` : 'opacity-0'}`} 
+              style={{ animationDelay: `${(idx + 1) * 60}ms` }}
+            >
+              <div className="w-[32px] h-[32px] rounded-[8px] bg-accent-dim border border-glow flex items-center justify-center mb-6">
+                <f.icon size={16} className="text-accent" />
               </div>
-            ))}
-          </div>
+              <h3 className="font-body font-medium text-[15px] text-primary mb-2 tracking-[-0.01em]">{f.title}</h3>
+              <p className="font-body font-normal text-[13px] text-secondary leading-[1.65]">{f.desc}</p>
+            </div>
+          ))}
         </div>
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="py-24 px-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-14">
-            <p className="section-label mb-3">Pricing</p>
-            <h2 className="font-display text-3xl font-bold">Simple, transparent plans</h2>
-          </div>
-          <div className="grid md:grid-cols-3 gap-5">
-            {plans.map(p => (
-              <div key={p.name} className={`card flex flex-col relative ${
-                p.highlight ? 'border-brand-500/40 bg-brand-500/5' : ''
-              }`}>
-                {p.highlight && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="badge bg-brand-500 text-surface-900 font-semibold px-3 py-1 text-xs">
-                      Most popular
-                    </span>
-                  </div>
-                )}
-                <div className="mb-5">
-                  <p className="text-sm font-semibold text-gray-400 mb-1">{p.name}</p>
-                  <div className="flex items-end gap-1">
-                    <span className="font-display text-4xl font-bold text-white">{p.price}</span>
-                    <span className="text-sm text-gray-500 mb-1">/{p.period}</span>
-                  </div>
-                </div>
-                <ul className="space-y-2.5 flex-1 mb-6">
-                  {p.features.map(f => (
-                    <li key={f} className="flex items-center gap-2 text-sm text-gray-300">
-                      <CheckCircle size={14} className="text-brand-500 flex-shrink-0" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <button
-                  onClick={() => navigate('/onboarding')}
-                  className={p.highlight ? 'btn-primary justify-center' : 'btn-ghost justify-center'}
-                >
-                  {p.cta}
-                </button>
-              </div>
-            ))}
+      <section ref={pricingRef} id="pricing" className="py-[120px] px-6 max-w-[1120px] mx-auto relative z-10">
+        <div className="mb-[48px] flex flex-col md:flex-row justify-between items-end">
+          <div>
+            <h2 className="section-label mb-[16px]">Pricing</h2>
+            <h3 className="font-display text-[32px] font-semibold text-primary">Precise scale.</h3>
           </div>
         </div>
-      </section>
-
-      {/* CTA */}
-      <section className="py-24 px-6">
-        <div className="max-w-2xl mx-auto text-center">
-          <div className="card border-brand-500/20 bg-gradient-to-b from-brand-500/5 to-transparent">
-            <div className="flex items-center justify-center gap-1 mb-3">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} size={14} className="text-brand-500 fill-brand-500" />
-              ))}
+        
+        <div className="grid md:grid-cols-3 gap-[24px]">
+          {plans.map((p, idx) => (
+            <div 
+              key={p.name} 
+              className={`relative flex flex-col card-premium ${p.highlight ? 'border-accent/50 bg-[#6366f10f]' : ''} ${pricingVisible ? `animate-fade-up opacity-0` : 'opacity-0'}`}
+              style={{ animationDelay: `${(idx + 1) * 60}ms`, borderTop: p.highlight ? '2px solid var(--accent)' : '' }}
+            >
+              {p.highlight && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <span className="font-mono text-[10px] tracking-[0.12em] bg-raised text-accent border border-base px-[8px] py-[2px] rounded-[4px] uppercase">
+                    Most Popular
+                  </span>
+                </div>
+              )}
+              <div className="mb-8">
+                <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-secondary mb-4">{p.name}</p>
+                <div className="flex items-baseline gap-1">
+                  <span className="font-display text-[40px] font-semibold text-primary tracking-[-0.03em]">{p.price}</span>
+                  <span className="font-body text-[13px] text-text-muted">/{p.period}</span>
+                </div>
+              </div>
+              
+              <ul className="space-y-[12px] flex-1 mb-[32px]">
+                {p.features.map(f => (
+                  <li key={f} className="flex items-center gap-[12px] font-body text-[13px] text-secondary">
+                    <CheckCircle size={14} className="text-success flex-shrink-0" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              
+              <button
+                onClick={() => navigate('/onboarding')}
+                className={`w-full ${p.highlight ? 'btn-primary' : 'btn-ghost'}`}
+              >
+                {p.cta}
+              </button>
             </div>
-            <h2 className="font-display text-3xl font-bold mb-3">
-              Stop planning. Start building.
-            </h2>
-            <p className="text-gray-400 mb-7">
-              Join hundreds of founders using LaunchAI to ship AI products — no coding required.
-            </p>
-            <button onClick={() => navigate('/onboarding')} className="btn-primary text-base px-8 py-3">
-              Get started for free <ArrowRight size={16} />
-            </button>
-          </div>
+          ))}
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-white/5 py-8 px-6">
-        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-brand-500 flex items-center justify-center">
-              <Zap size={12} className="text-surface-900" fill="currentColor" />
-            </div>
-            <span className="font-display font-bold text-sm text-white">LaunchAI</span>
+      <footer className="border-t border-dim py-[48px] px-6 relative z-10">
+        <div className="max-w-[1120px] mx-auto flex flex-col md:flex-row items-center justify-between gap-[16px]">
+          <div className="flex items-center gap-[8px]">
+            <div className="w-[6px] h-[6px] bg-accent rounded-[1px]"></div>
+            <span className="font-display font-semibold text-[14px] text-primary">LaunchAI</span>
           </div>
-          <p className="text-xs text-gray-600">© 2025 LaunchAI. Built for founders who ship.</p>
-          <div className="flex gap-5 text-xs text-gray-500">
-            <a href="#" className="hover:text-gray-300 transition-colors">Privacy</a>
-            <a href="#" className="hover:text-gray-300 transition-colors">Terms</a>
-            <a href="#" className="hover:text-gray-300 transition-colors">Contact</a>
+          <p className="font-body text-[13px] text-text-muted">© 2026 LaunchAI Inc.</p>
+          <div className="flex gap-[24px] font-body text-[13px] text-secondary">
+            <a href="#" className="hover:text-primary transition-colors duration-150">Privacy</a>
+            <a href="#" className="hover:text-primary transition-colors duration-150">Terms</a>
+            <a href="#" className="hover:text-primary transition-colors duration-150">Changelog</a>
           </div>
         </div>
       </footer>

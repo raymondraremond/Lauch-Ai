@@ -92,33 +92,33 @@ export default function ChatWidget({ placeholder = "Ask your AI copilot anything
   }
 
   return (
-    <div className={`flex flex-col bg-surface-800 border border-white/5 rounded-2xl overflow-hidden
-                     ${compact ? 'h-full' : 'h-[600px]'}`}>
+    <div className={`flex flex-col bg-raised border border-base rounded-[12px] overflow-hidden font-body
+                     ${compact ? 'h-full flex-1' : 'h-[600px]'}`}>
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((m, i) => (
           <div key={i} className={`flex gap-3 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
-            <div className={`w-7 h-7 rounded-lg flex-shrink-0 flex items-center justify-center text-xs
-              ${m.role === 'assistant' ? 'bg-brand-500/20 text-brand-400' : 'bg-white/10 text-gray-300'}`}>
+            <div className={`w-[28px] h-[28px] rounded-[6px] flex-shrink-0 flex items-center justify-center
+              ${m.role === 'assistant' ? 'bg-accent-dim text-accent border border-glow' : 'bg-muted text-secondary border border-base'}`}>
               {m.role === 'assistant' ? <Bot size={14} /> : <User size={14} />}
             </div>
-            <div className={`max-w-[78%] text-sm leading-relaxed rounded-2xl px-4 py-3 whitespace-pre-line
+            <div className={`max-w-[80%] text-[13px] leading-[1.65] rounded-[10px] px-4 py-3 whitespace-pre-line tracking-[-0.01em]
               ${m.role === 'assistant'
-                ? 'bg-surface-700 text-gray-200 rounded-tl-none'
-                : 'bg-brand-500/20 text-brand-100 rounded-tr-none border border-brand-500/20'}`}>
+                ? 'bg-overlay text-primary border border-base rounded-tl-[2px]'
+                : 'bg-accent-dim text-primary border border-accent/20 rounded-tr-[2px]'}`}>
               {m.content}
             </div>
           </div>
         ))}
         {loading && (
-          <div className="flex gap-3">
-            <div className="w-7 h-7 rounded-lg bg-brand-500/20 flex items-center justify-center">
-              <Bot size={14} className="text-brand-400" />
+          <div className="flex gap-[12px]">
+            <div className="w-[28px] h-[28px] rounded-[6px] bg-accent-dim border border-glow flex items-center justify-center">
+              <Bot size={14} className="text-accent" />
             </div>
-            <div className="bg-surface-700 rounded-2xl rounded-tl-none px-4 py-3 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-brand-500/60 animate-bounce [animation-delay:0ms]" />
-              <span className="w-1.5 h-1.5 rounded-full bg-brand-500/60 animate-bounce [animation-delay:150ms]" />
-              <span className="w-1.5 h-1.5 rounded-full bg-brand-500/60 animate-bounce [animation-delay:300ms]" />
+            <div className="bg-overlay border border-base rounded-[10px] rounded-tl-[2px] px-4 py-3 flex items-center gap-[6px]">
+              <span className="w-[6px] h-[6px] rounded-full bg-accent animate-pulse [animation-delay:0ms]" />
+              <span className="w-[6px] h-[6px] rounded-full bg-accent animate-pulse [animation-delay:150ms]" />
+              <span className="w-[6px] h-[6px] rounded-full bg-accent animate-pulse [animation-delay:300ms]" />
             </div>
           </div>
         )}
@@ -126,8 +126,8 @@ export default function ChatWidget({ placeholder = "Ask your AI copilot anything
       </div>
 
       {/* Input */}
-      <div className="p-4 border-t border-white/5">
-        <div className="flex gap-2">
+      <div className="p-4 border-t border-base bg-base">
+        <div className="flex gap-[8px]">
           <input
             className="input flex-1"
             placeholder={placeholder}
@@ -139,17 +139,16 @@ export default function ChatWidget({ placeholder = "Ask your AI copilot anything
           <button
             onClick={sendMessage}
             disabled={loading || !input.trim()}
-            className="w-10 h-10 rounded-lg bg-brand-500 hover:bg-brand-600 disabled:opacity-40
-                       disabled:cursor-not-allowed flex items-center justify-center transition-all
-                       shadow-lg shadow-brand-500/20"
+            className="w-[40px] h-[40px] rounded-[7px] bg-accent hover:bg-accent-hover text-white disabled:opacity-50
+                       disabled:cursor-not-allowed flex items-center justify-center transition-colors shadow-none"
           >
-            {loading ? <Loader size={16} className="animate-spin text-surface-900" />
-                     : <Send size={15} className="text-surface-900" />}
+            {loading ? <Loader size={16} className="animate-spin" />
+                     : <Send size={15} />}
           </button>
         </div>
         {!apiKey && (
-          <p className="text-xs text-gray-600 mt-2 text-center">
-            Demo mode — add <code className="text-brand-500/70">VITE_ANTHROPIC_API_KEY</code> to .env for live AI
+          <p className="font-mono text-[10px] text-text-muted mt-3 text-center tracking-[0.05em] uppercase">
+            Demo mode — add <code className="text-accent lowercase">VITE_ANTHROPIC_API_KEY</code> to .env for live AI
           </p>
         )}
       </div>
