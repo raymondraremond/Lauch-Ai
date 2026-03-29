@@ -66,16 +66,35 @@ const server = http.createServer(async (req, res) => {
     setCorsHeaders(res);
     try {
       const body = await getBody();
-      const { projectTitle, projectDescription, targetAudience, aiFeatures, tier } = body;
+      const { submissionType, projectTitle, projectDescription, targetAudience, aiFeatures, fileContent, fileType, url, additionalContext, tier } = body;
 
       let systemPrompt = '';
       if (tier === 'free') {
-        systemPrompt = "You are a sharp, honest AI product critic. Give a brief critique in exactly 3 parts:\n1. STRONGEST POINT: One thing this project does well (2 sentences max)\n2. BIGGEST RISK: The most critical problem or gap (2 sentences max)\n3. TOP SUGGESTION: The single most impactful improvement they should make (2 sentences max)\nBe direct, specific, and constructive. No fluff.";
+        systemPrompt = "You are a sharp, honest AI product critic. Give a brief critique in exactly 3 parts. Use headers exactly like this: '### STRONGEST POINT ###', '### BIGGEST RISK ###', and '### TOP SUGGESTION ###'.\n1. STRONGEST POINT: One thing this project does well (2 sentences max)\n2. BIGGEST RISK: The most critical problem or gap (2 sentences max)\n3. TOP SUGGESTION: The single most impactful improvement they should make (2 sentences max)\nBe direct, specific, and constructive. No fluff.";
       } else {
-        systemPrompt = "You are a senior AI product strategist and critic. Give a comprehensive critique with these sections:\n1. CONCEPT SCORE: Rate the idea out of 10 with justification\n2. MARKET FIT: Assess target audience and demand (3-4 sentences)\n3. AI FEATURE ANALYSIS: Evaluate their AI feature choices — are they the right ones? (3-4 sentences)\n4. UX & FLOW CRITIQUE: Assess user experience and product flow (3-4 sentences)\n5. COMPETITIVE LANDSCAPE: Name 2-3 competitors and how this project differentiates (3-4 sentences)\n6. IMPROVEMENT ROADMAP: Give 5 specific, prioritized action items to make this product stronger\n7. VERDICT: Final honest recommendation in 2 sentences\nBe brutally honest, specific, and valuable. This is a paid critique.";
+        systemPrompt = "You are a senior AI product strategist and critic. Give a comprehensive critique with these sections, using headers like '### SECTION NAME ###':\n1. CONCEPT SCORE: Rate the idea out of 10 with justification\n2. MARKET FIT: Assess target audience and demand (3-4 sentences)\n3. AI FEATURE ANALYSIS: Evaluate their AI feature choices — are they the right ones? (3-4 sentences)\n4. UX & FLOW CRITIQUE: Assess user experience and product flow (3-4 sentences)\n5. COMPETITIVE LANDSCAPE: Name 2-3 competitors and how this project differentiates (3-4 sentences)\n6. IMPROVEMENT ROADMAP: Give 5 specific, prioritized action items to make this product stronger\n7. VERDICT: Final honest recommendation in 2 sentences\nBe brutally honest, specific, and valuable. This is a paid critique.";
       }
 
-      const promptText = `Please critique this AI project:\nTitle: ${projectTitle || 'N/A'}\nDescription: ${projectDescription || 'N/A'}\nTarget Audience: ${targetAudience || 'N/A'}\nAI Features Used: ${aiFeatures || 'N/A'}`;
+      let contents = [];
+      if (submissionType === 'file' && fileType === 'pdf') {
+        contents = [{
+          role: 'user',
+          parts: [
+            { text: `Please critique this AI project titled "${projectTitle || 'N/A'}". Analyze the attached PDF for project details and context.` },
+            { inline_data: { mime_type: 'application/pdf', data: fileContent } }
+          ]
+        }];
+      } else {
+        let promptText = '';
+        if (submissionType === 'file') {
+          promptText = `Please critique this AI project submitted as a document file.\nTitle: ${projectTitle || 'N/A'}\nDocument contents:\n---\n${fileContent || 'No content provided'}\n---\nBased on the above, give a full critique covering what this project is, who it's for, and how strong it is.`;
+        } else if (submissionType === 'link') {
+          promptText = `Please critique this AI project based on the link provided.\nTitle: ${projectTitle || 'N/A'}\nProject URL: ${url || 'N/A'}\nAdditional context from the user: ${additionalContext || 'None provided'}\n\nSearch and analyze the project from the URL, infer what it does, who it targets, and what AI features it likely uses. Then give a full critique.`;
+        } else {
+          promptText = `Please critique this AI project:\nTitle: ${projectTitle || 'N/A'}\nDescription: ${projectDescription || 'N/A'}\nTarget Audience: ${targetAudience || 'N/A'}\nAI Features Used: ${aiFeatures || 'N/A'}`;
+        }
+        contents = [{ role: 'user', parts: [{ text: promptText }] }];
+      }
 
       if (!apiKey) {
          res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -89,7 +108,7 @@ const server = http.createServer(async (req, res) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           system_instruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ role: 'user', parts: [{ text: promptText }] }],
+          contents: contents,
         })
       });
 
