@@ -8,7 +8,7 @@ import Companion from './pages/Companion.jsx'
 import SettingsPage from './pages/Settings.jsx'
 import Deploy from './pages/Deploy.jsx'
 import InfoPage from './pages/Info.jsx'
-
+import CritiquePage from './pages/CritiquePage.jsx'
 export default function App() {
   return (
     <BrowserRouter>
@@ -24,6 +24,7 @@ export default function App() {
         <Route path="/privacy"     element={<InfoPage />} />
         <Route path="/terms"       element={<InfoPage />} />
         <Route path="/changelog"   element={<InfoPage />} />
+        <Route path="/critique"    element={<CritiquePage />} />
         {/* Catch-all: Redirect to Landing, but could be used for 404 in the future */}
         <Route path="*"            element={<Navigate to="/" replace />} />
       </Routes>

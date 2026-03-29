@@ -1,11 +1,12 @@
 import { NavLink, Link, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Wand2, MessageSquare, Compass, Rocket, Settings, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, Wand2, MessageSquare, Compass, Rocket, Settings, ChevronRight, Target } from 'lucide-react'
 
 const nav = [
   { label: 'Dashboard',  icon: LayoutDashboard, path: '/dashboard'  },
   { label: 'AI Builder', icon: Wand2,           path: '/builder'    },
   { label: 'Copilot',    icon: MessageSquare,   path: '/copilot'    },
   { label: 'Companion',  icon: Compass,         path: '/companion', isNew: true },
+  { label: 'Critique',   icon: Target,          path: '/critique',  isNew: true },
   { label: 'Deploy',     icon: Rocket,          path: '/deploy'     },
   { label: 'Settings',   icon: Settings,        path: '/settings'   },
 ]

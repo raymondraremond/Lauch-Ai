@@ -1,0 +1,123 @@
+import http from 'http';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Very basic manual parsing of .env since we cannot install dotenv per rules
+try {
+  const envPath = path.resolve(__dirname, '../.env');
+  const envFile = fs.readFileSync(envPath, 'utf8');
+  envFile.split('\n').forEach(line => {
+    const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)?\s*$/);
+    if (match) {
+      const key = match[1];
+      let value = match[2] || '';
+      if (value.startsWith('"') && value.endsWith('"')) value = value.slice(1, -1);
+      process.env[key] = value;
+    }
+  });
+} catch (e) {
+  // Ignore if .env doesn't exist
+}
+
+// Support the user's instruction about GEMINI_API_KEY or use the existing VITE_GOOGLE_API_KEY
+const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GOOGLE_API_KEY;
+
+const PORT = 4000;
+
+const setCorsHeaders = (res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET, POST, PUT, DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+};
+
+const server = http.createServer(async (req, res) => {
+  if (req.method === 'OPTIONS') {
+    setCorsHeaders(res);
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
+  // Helper to parse JSON body
+  const getBody = async () => {
+    return new Promise((resolve, reject) => {
+      let body = '';
+      req.on('data', chunk => body += chunk);
+      req.on('end', () => {
+        try { resolve(body ? JSON.parse(body) : {}); }
+        catch (e) { resolve({}); }
+      });
+      req.on('error', reject);
+    });
+  };
+
+  if (req.method === 'POST' && req.url === '/api/chat') {
+    setCorsHeaders(res);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ message: 'Dummy chat endpoint' }));
+    return;
+  }
+
+  if (req.method === 'POST' && req.url === '/api/critique') {
+    setCorsHeaders(res);
+    try {
+      const body = await getBody();
+      const { projectTitle, projectDescription, targetAudience, aiFeatures, tier } = body;
+
+      let systemPrompt = '';
+      if (tier === 'free') {
+        systemPrompt = "You are a sharp, honest AI product critic. Give a brief critique in exactly 3 parts:\n1. STRONGEST POINT: One thing this project does well (2 sentences max)\n2. BIGGEST RISK: The most critical problem or gap (2 sentences max)\n3. TOP SUGGESTION: The single most impactful improvement they should make (2 sentences max)\nBe direct, specific, and constructive. No fluff.";
+      } else {
+        systemPrompt = "You are a senior AI product strategist and critic. Give a comprehensive critique with these sections:\n1. CONCEPT SCORE: Rate the idea out of 10 with justification\n2. MARKET FIT: Assess target audience and demand (3-4 sentences)\n3. AI FEATURE ANALYSIS: Evaluate their AI feature choices — are they the right ones? (3-4 sentences)\n4. UX & FLOW CRITIQUE: Assess user experience and product flow (3-4 sentences)\n5. COMPETITIVE LANDSCAPE: Name 2-3 competitors and how this project differentiates (3-4 sentences)\n6. IMPROVEMENT ROADMAP: Give 5 specific, prioritized action items to make this product stronger\n7. VERDICT: Final honest recommendation in 2 sentences\nBe brutally honest, specific, and valuable. This is a paid critique.";
+      }
+
+      const promptText = `Please critique this AI project:\nTitle: ${projectTitle || 'N/A'}\nDescription: ${projectDescription || 'N/A'}\nTarget Audience: ${targetAudience || 'N/A'}\nAI Features Used: ${aiFeatures || 'N/A'}`;
+
+      if (!apiKey) {
+         res.writeHead(500, { 'Content-Type': 'application/json' });
+         res.end(JSON.stringify({ error: 'API key not configured' }));
+         return;
+      }
+
+      // Call Gemini 2.5 Pro endpoint
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: 'user', parts: [{ text: promptText }] }],
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.error) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: data.error.message || 'Gemini API Error' }));
+        return;
+      }
+
+      const critique = data.candidates?.[0]?.content?.parts?.[0]?.text || "No critique returned.";
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ critique, tier, projectTitle }));
+    } catch (err) {
+      console.error(err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Internal server error' }));
+    }
+    return;
+  }
+
+  // Fallback 404
+  res.writeHead(404);
+  res.end('Not Found');
+});
+
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
