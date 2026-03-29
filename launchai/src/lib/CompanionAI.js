@@ -507,7 +507,11 @@ export async function analyzeWithCompanion(input, contentType, mode) {
       const response = await callAnthropic(anthropicKey, systemPrompt, userMessage)
       return { response, provider: 'Claude Sonnet', mode }
     } catch (err) {
-      console.warn('Anthropic call failed, trying Gemini fallback:', err.message)
+      console.error('Anthropic call failed:', err.message)
+      // If the key was provided but failed, we should probably tell the user why instead of silently falling back
+      if (err.message.includes('401') || err.message.includes('403')) {
+        throw new Error(`Anthropic Key Error: Please check your API key in Settings. (${err.message})`)
+      }
     }
   }
 
@@ -516,7 +520,10 @@ export async function analyzeWithCompanion(input, contentType, mode) {
       const response = await callGemini(geminiKey, systemPrompt, userMessage)
       return { response, provider: 'Gemini Pro', mode }
     } catch (err) {
-      console.warn('Gemini call failed, using demo:', err.message)
+      console.error('Gemini call failed:', err.message)
+      if (err.message.includes('401') || err.message.includes('400')) {
+        throw new Error(`Gemini Key Error: Please check your API key in Settings. (${err.message})`)
+      }
     }
   }
 

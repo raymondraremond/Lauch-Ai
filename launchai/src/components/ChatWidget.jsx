@@ -60,6 +60,12 @@ export default function ChatWidget({ placeholder = "Ask your AI copilot anything
           }
         )
         const data = await res.json()
+        if (data.error) {
+          console.error('Gemini error:', data.error)
+          setMessages(prev => [...prev, { role: 'assistant', content: `❌ Gemini Error: ${data.error.message}`, provider: 'Error' }])
+          setLoading(false)
+          return
+        }
         const reply = data.candidates?.[0]?.content?.parts?.[0]?.text
         if (reply) {
           setMessages(prev => [...prev, { role: 'assistant', content: reply, provider: 'Gemini' }])

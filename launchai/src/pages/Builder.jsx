@@ -7,7 +7,7 @@ import { getProjectById, saveProject, getBestPracticeTemplate } from '../lib/Pro
 import {
   Type, AlignLeft, ToggleLeft, List, MessageSquare, BarChart2,
   Trash2, Move, Eye, Save, Rocket, GripVertical, Plus, Settings2,
-  Check
+  Check, Sparkles, ArrowRight
 } from 'lucide-react'
 
 const PALETTE = [
@@ -96,10 +96,9 @@ export default function Builder() {
       <Navbar minimal />
       <Sidebar />
 
-      <div className="ml-[220px] pt-[56px] flex h-[100vh] overflow-hidden">
-
+      <div className="ml-[220px] pt-[56px] flex h-[100vh] overflow-hidden relative">
         {/* Component Palette */}
-        <aside className="w-[240px] border-r border-dim bg-base p-4 flex flex-col gap-[12px] overflow-y-auto">
+        <aside className="w-[240px] flex-shrink-0 border-r border-dim bg-base p-4 flex flex-col gap-[12px] overflow-y-auto hidden lg:flex">
           <p className="font-mono text-[11px] tracking-[0.12em] uppercase text-text-muted mb-2">Components</p>
           {PALETTE.map(item => (
             <button
@@ -121,21 +120,21 @@ export default function Builder() {
           <p className="font-body text-[12px] text-text-muted mt-2 text-center select-none">Click or drag to add</p>
         </aside>
 
-        {/* Canvas */}
-        <div className="flex-1 flex flex-col overflow-hidden relative">
+        {/* Canvas Area */}
+        <div className="flex-1 flex flex-col overflow-hidden relative min-w-0">
           {/* Toolbar */}
-          <div className="flex items-center justify-between px-6 py-3 border-b border-dim bg-base/80 backdrop-blur-md z-10 w-[600px] border-r">
+          <div className="flex items-center justify-between px-6 py-3 border-b border-dim bg-base/80 backdrop-blur-md z-10 w-full">
             <div className="flex items-center gap-[12px]">
               <input
-                className="bg-transparent font-body text-[14px] font-medium text-primary outline-none placeholder-text-muted w-[140px] tracking-[-0.01em] border-b border-transparent focus:border-accent/30"
+                className="bg-transparent font-body text-[14px] font-medium text-primary outline-none placeholder-text-muted w-[140px] tracking-[-0.01em] border-b border-transparent focus:border-accent/30 transition-all"
                 placeholder="Untitled App"
                 value={projectName}
                 onChange={e => setProjectName(e.target.value)}
               />
-              <span className="badge-draft"><div className="w-[5px] h-[5px] rounded-full mr-[6px] bg-text-muted"></div>Draft</span>
+              <span className="badge-draft hidden sm:inline-flex"><div className="w-[5px] h-[5px] rounded-full mr-[6px] bg-text-muted"></div>Draft</span>
             </div>
             <div className="flex items-center gap-[8px]">
-              <div className="mr-2 flex items-center gap-2">
+              <div className="mr-2 hidden sm:flex items-center gap-2">
                 {isSaving && <span className="font-mono text-[9px] text-text-muted uppercase animate-pulse">Saving...</span>}
                 {saveSuccess && <span className="font-mono text-[9px] text-success uppercase flex items-center gap-1"><Check size={10}/> Saved</span>}
               </div>
@@ -144,29 +143,29 @@ export default function Builder() {
                 className={`flex items-center gap-[6px] text-[13px] px-[12px] py-[6px] rounded-[6px] border transition-colors duration-150 tracking-[-0.01em]
                   ${showPreview ? 'bg-accent-dim border-accent/40 text-accent font-medium' : 'border-base text-secondary hover:text-primary bg-raised hover:border-lit'}`}
               >
-                <Eye size={14} /> {showPreview ? 'Edit' : 'Preview'}
+                <Eye size={14} /> <span className="hidden sm:inline">{showPreview ? 'Edit' : 'Preview'}</span>
               </button>
               <button
                 onClick={handleSave}
                 disabled={isSaving}
                 className="flex items-center gap-[6px] font-body text-[13px] px-[12px] py-[6px] rounded-[6px] border border-base bg-raised text-secondary hover:text-primary hover:border-lit transition-colors duration-150 tracking-[-0.01em] disabled:opacity-50"
               >
-                <Save size={14} className={saveSuccess ? 'text-success' : ''} /> Save
+                <Save size={14} className={saveSuccess ? 'text-success' : ''} /> <span className="hidden sm:inline">Save</span>
               </button>
               <button
                 onClick={() => navigate('/deploy')}
                 className="btn-primary text-[13px] px-[16px] py-[6px] !rounded-[6px]"
               >
-                <Rocket size={14} /> Deploy
+                <Rocket size={14} /> <span className="hidden sm:inline">Deploy</span>
               </button>
             </div>
           </div>
 
-          <div className="grain-overlay opacity-[0.02]"></div>
+          <div className="grain-overlay opacity-[0.02] pointer-events-none"></div>
 
           {/* Canvas body */}
-          <div className="flex-1 overflow-y-auto p-[32px] bg-void relative z-10 w-[600px] border-r border-dim h-full">
-            <div className="max-w-[100%] mx-auto pb-32">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-[32px] bg-void relative z-10 w-full h-full">
+            <div className="max-w-[700px] mx-auto pb-32">
               <div className="card min-h-[500px] relative">
                 <div className="absolute top-[12px] left-[12px] flex items-center gap-[8px]">
                   <div className="flex gap-[6px]">
@@ -249,7 +248,7 @@ export default function Builder() {
         </div>
 
         {/* AI Copilot Sidebar */}
-        <aside className="w-[320px] bg-base border-l border-dim flex flex-col overflow-hidden h-full absolute right-0">
+        <aside className="w-[340px] flex-shrink-0 bg-base border-l border-dim flex flex-col overflow-hidden h-full z-20 hidden xl:flex">
           <div className="px-[16px] py-[16px] border-b border-dim flex items-center gap-[12px] bg-base">
             <div className="w-[28px] h-[28px] rounded-[6px] bg-accent-dim border border-glow flex justify-center items-center">
               <MessageSquare size={14} className="text-accent" />
