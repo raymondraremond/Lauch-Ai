@@ -84,7 +84,7 @@ export function saveProject(project) {
     projects[idx] = updatedProject
   } else {
     // New project
-    updatedProject.id = Date.now()
+    updatedProject.id = Number(Date.now().toString() + Math.floor(Math.random() * 1000).toString().padStart(3, '0'))
     projects.push(updatedProject)
   }
 

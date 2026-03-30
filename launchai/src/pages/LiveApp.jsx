@@ -6,6 +6,7 @@ import {
   MessageSquare, ChevronRight, ArrowLeft, Loader2,
   BarChart3, ChevronDown, Sparkles, UploadCloud, Check
 } from 'lucide-react'
+import { callGeminiWithRotation } from '../lib/ApiKeyManager.js'
 
 export default function LiveApp() {
   const { id } = useParams()
@@ -41,12 +42,7 @@ export default function LiveApp() {
     if (!project || isProcessing) return
     setIsProcessing(true)
 
-    const geminiKey = localStorage.getItem('VITE_GOOGLE_API_KEY')
-    if (!geminiKey) {
-      alert("API Key Missing: Please add your Gemini API key in the LaunchAI Settings to enable live generation.")
-      setIsProcessing(false)
-      return
-    }
+    // Note: callGeminiWithRotation handles key retrieval and checking
 
     try {
       const newOutputs = { ...outputs }
@@ -90,19 +86,28 @@ export default function LiveApp() {
         if (imagePart) parts.push(imagePart)
 
         // Call Gemini 3.1 Flash
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ role: 'user', parts: parts }],
-              generationConfig: { maxOutputTokens: 1000, temperature: 0.7 },
-            }),
+        // Call Gemini with rotation
+        const data = await callGeminiWithRotation(async (apiKey) => {
+          const res = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ role: 'user', parts: parts }],
+                generationConfig: { maxOutputTokens: 1000, temperature: 0.7 },
+              }),
+            }
+          )
+          
+          if (!res.ok) {
+            const errBody = await res.text()
+            throw new Error(`Gemini API error: ${res.status} — ${errBody}`)
           }
-        )
+          
+          return await res.json()
+        })
 
-        const data = await res.json()
         if (data.error) throw new Error(data.error.message)
         const result = data.candidates?.[0]?.content?.parts?.[0]?.text
         if (result) newOutputs[block.id] = result

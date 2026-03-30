@@ -1,23 +1,37 @@
 import { useState, useEffect } from 'react'
 import Navbar from '../components/Navbar.jsx'
 import Sidebar from '../components/Sidebar.jsx'
-import { Key, Shield, Info, CheckCircle, XCircle, Trash2, ArrowRight } from 'lucide-react'
+import { Key, Shield, Info, CheckCircle, XCircle, Trash2, ArrowRight, Plus, X } from 'lucide-react'
+import { getGeminiKeys, saveGeminiKeys } from '../lib/ApiKeyManager.js'
 
 export default function SettingsPage() {
-  const [geminiKey, setGeminiKey] = useState('')
+  const [geminiKeys, setGeminiKeys] = useState([])
+  const [newGeminiKey, setNewGeminiKey] = useState('')
   const [anthropicKey, setAnthropicKey] = useState('')
   const [saved, setSaved] = useState(false)
   
   // Load existing keys from localStorage on mount
   useEffect(() => {
-    const gKey = localStorage.getItem('VITE_GOOGLE_API_KEY') || ''
+    const gKeys = getGeminiKeys()
     const aKey = localStorage.getItem('VITE_ANTHROPIC_API_KEY') || ''
-    setGeminiKey(gKey)
+    setGeminiKeys(gKeys)
     setAnthropicKey(aKey)
   }, [])
 
+  function addGeminiKey() {
+    if (!newGeminiKey.trim()) return
+    const updated = [...geminiKeys, newGeminiKey.trim()]
+    setGeminiKeys(updated)
+    setNewGeminiKey('')
+  }
+
+  function removeGeminiKey(index) {
+    const updated = geminiKeys.filter((_, i) => i !== index)
+    setGeminiKeys(updated)
+  }
+
   function saveKeys() {
-    localStorage.setItem('VITE_GOOGLE_API_KEY', geminiKey.trim())
+    saveGeminiKeys(geminiKeys)
     localStorage.setItem('VITE_ANTHROPIC_API_KEY', anthropicKey.trim())
     setSaved(true)
     setTimeout(() => setSaved(false), 3000)
@@ -29,13 +43,13 @@ export default function SettingsPage() {
   function clearKeys() {
     localStorage.removeItem('VITE_GOOGLE_API_KEY')
     localStorage.removeItem('VITE_ANTHROPIC_API_KEY')
-    setGeminiKey('')
+    setGeminiKeys([])
     setAnthropicKey('')
     window.location.reload()
   }
 
-  const isGeminiActive = geminiKey.length > 5 || import.meta.env.VITE_GOOGLE_API_KEY
-  const isAnthropicActive = anthropicKey.length > 5 || import.meta.env.VITE_ANTHROPIC_API_KEY
+  const isGeminiActive = geminiKeys.length > 0 || !!import.meta.env.VITE_GOOGLE_API_KEY
+  const isAnthropicActive = anthropicKey.length > 5 || !!import.meta.env.VITE_ANTHROPIC_API_KEY
 
   return (
     <div className="min-h-screen bg-void font-body flex flex-col">
@@ -80,14 +94,14 @@ export default function SettingsPage() {
                 <h2 className="font-display text-[18px] font-semibold text-primary">AI API Keys</h2>
               </div>
 
-              {/* Gemini Key */}
-              <div className="space-y-2">
+              {/* Gemini Keys Section */}
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="font-body text-[13px] font-medium text-secondary">Google Gemini Key (Free Tier)</label>
+                  <label className="font-body text-[13px] font-medium text-secondary">Google Gemini Keys (Auto-Rotation Enabled)</label>
                   <div className="flex items-center gap-1.5">
                     {isGeminiActive ? (
                       <span className="flex items-center gap-1 text-[11px] text-[#10b981] font-medium">
-                        <CheckCircle size={10} /> Active
+                        <CheckCircle size={10} /> {geminiKeys.length} Key{geminiKeys.length !== 1 ? 's' : ''} Active
                       </span>
                     ) : (
                       <span className="flex items-center gap-1 text-[11px] text-text-muted font-medium">
@@ -96,14 +110,51 @@ export default function SettingsPage() {
                     )}
                   </div>
                 </div>
-                <input 
-                  type="password"
-                  value={geminiKey}
-                  onChange={(e) => setGeminiKey(e.target.value)}
-                  placeholder="AIzaSy..."
-                  className="input w-full"
-                />
+
+                {/* Key List */}
+                <div className="space-y-2">
+                  {geminiKeys.map((key, idx) => (
+                    <div key={idx} className="flex items-center gap-2 group">
+                      <div className="flex-1 px-4 py-2.5 bg-void/50 border border-base rounded-[8px] font-mono text-[12px] text-secondary flex items-center justify-between">
+                        <span className="opacity-50">••••••••{key.slice(-4)}</span>
+                        <div className="flex items-center gap-2">
+                          <CheckCircle size={12} className="text-[#10b981] opacity-50" />
+                          <button 
+                            onClick={() => removeGeminiKey(idx)}
+                            className="p-1 hover:text-danger transition-colors"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {/* Add New Key Input */}
+                  <div className="flex gap-2">
+                    <input 
+                      type="password"
+                      value={newGeminiKey}
+                      onChange={(e) => setNewGeminiKey(e.target.value)}
+                      placeholder="Add another Gemini API key (AIzaSy...)"
+                      className="input flex-1"
+                      onKeyDown={(e) => e.key === 'Enter' && addGeminiKey()}
+                    />
+                    <button 
+                      onClick={addGeminiKey}
+                      disabled={!newGeminiKey.trim()}
+                      className="px-4 bg-accent-dim border border-glow rounded-[8px] text-accent hover:bg-accent/20 transition-all disabled:opacity-50"
+                    >
+                      <Plus size={18} />
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-text-muted italic">
+                    LaunchAI will automatically rotate to the next key if one hits a rate limit.
+                  </p>
+                </div>
               </div>
+
+              <div className="h-[1px] bg-dim w-full" />
 
               {/* Anthropic Key */}
               <div className="space-y-2">

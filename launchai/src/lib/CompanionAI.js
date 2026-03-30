@@ -5,6 +5,8 @@
  * Falls back to demo responses when no API keys are configured.
  */
 
+import { callGeminiWithRotation } from './ApiKeyManager.js'
+
 const MODE_PROMPTS = {
   diagnose: {
     label: 'Diagnose',
@@ -508,22 +510,23 @@ export async function analyzeWithCompanion(input, contentType, mode) {
       return { response, provider: 'Claude Sonnet', mode }
     } catch (err) {
       console.error('Anthropic call failed:', err.message)
-      // If the key was provided but failed, we should probably tell the user why instead of silently falling back
       if (err.message.includes('401') || err.message.includes('403')) {
         throw new Error(`Anthropic Key Error: Please check your API key in Settings. (${err.message})`)
       }
     }
   }
 
-  if (geminiKey) {
-    try {
-      const response = await callGemini(geminiKey, systemPrompt, userMessage)
-      return { response, provider: 'Gemini Pro', mode }
-    } catch (err) {
-      console.error('Gemini call failed:', err.message)
-      if (err.message.includes('401') || err.message.includes('400')) {
-        throw new Error(`Gemini Key Error: Please check your API key in Settings. (${err.message})`)
-      }
+  try {
+    const response = await callGeminiWithRotation((apiKey) => 
+      callGemini(apiKey, systemPrompt, userMessage)
+    )
+    return { response, provider: 'Gemini Pro', mode }
+  } catch (err) {
+    console.error('Gemini rotation failed:', err.message)
+    // If it's a real error (not just "no keys"), we might want to show it
+    // But if it's "no keys", we just fall through to demo
+    if (!err.message.includes('No Gemini API keys')) {
+      throw err
     }
   }
 

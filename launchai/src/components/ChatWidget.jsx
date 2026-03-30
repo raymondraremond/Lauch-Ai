@@ -1,6 +1,5 @@
-import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react'
-import { Link } from 'react-router-dom'
 import { Send, Bot, User, Loader, X, Sparkles, Image as ImageIcon, UploadCloud } from 'lucide-react'
+import { callGeminiWithRotation, getGeminiKeys } from '../lib/ApiKeyManager.js'
 
 const SYSTEM_PROMPT = `You are the LaunchAI Copilot, a world-class AI developer.
 Your goal is to help users build sophisticated AI applications by adding components to their canvas.
@@ -69,9 +68,9 @@ const ChatWidget = forwardRef(({ placeholder = "Ask your AI copilot anything…"
     }
 
     const anthropicKey = localStorage.getItem('VITE_ANTHROPIC_API_KEY') || import.meta.env.VITE_ANTHROPIC_API_KEY
-    const geminiKey    = localStorage.getItem('VITE_GOOGLE_API_KEY') || import.meta.env.VITE_GOOGLE_API_KEY
+    const geminiKeys   = getGeminiKeys()
 
-    if (geminiKey) {
+    if (geminiKeys.length > 0 || import.meta.env.VITE_GOOGLE_API_KEY) {
       try {
         const geminiHistory = updated[0].role === 'assistant' ? updated.slice(1) : updated
         const parts = [{ text: text }]
@@ -84,27 +83,35 @@ const ChatWidget = forwardRef(({ placeholder = "Ask your AI copilot anything…"
           })
         }
 
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-              contents: [
-                ...geminiHistory.slice(0, -1).map(m => ({
-                  role: m.role === 'assistant' ? 'model' : 'user',
-                  parts: [{ text: m.content }]
-                })),
-                { role: 'user', parts: parts }
-              ],
-              generationConfig: { maxOutputTokens: 800, temperature: 0.7 },
-            }),
+        const reply = await callGeminiWithRotation(async (apiKey) => {
+          const res = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+                contents: [
+                  ...geminiHistory.slice(0, -1).map(m => ({
+                    role: m.role === 'assistant' ? 'model' : 'user',
+                    parts: [{ text: m.content }]
+                  })),
+                  { role: 'user', parts: parts }
+                ],
+                generationConfig: { maxOutputTokens: 800, temperature: 0.7 },
+              }),
+            }
+          )
+          
+          if (!res.ok) {
+            const errBody = await res.text()
+            throw new Error(`Gemini API error: ${res.status} — ${errBody}`)
           }
-        )
-        const data = await res.json()
-        if (data.error) throw new Error(data.error.message)
-        const reply = data.candidates?.[0]?.content?.parts?.[0]?.text
+          
+          const data = await res.json()
+          return data.candidates?.[0]?.content?.parts?.[0]?.text
+        })
+
         if (reply) {
           setUploadedImage(null)
           setImageType(null)
@@ -112,10 +119,13 @@ const ChatWidget = forwardRef(({ placeholder = "Ask your AI copilot anything…"
           return
         }
       } catch (err) { 
-        console.error('Gemini failed:', err)
-        setMessages(prev => [...prev, { role: 'assistant', content: `⚠️ Gemini Error: ${err.message}`, provider: 'Error' }])
-        setLoading(false)
-        return
+        console.error('Gemini rotation failed:', err)
+        // If it's a real failure after trying all keys, show it
+        if (!err.message.includes('No Gemini API keys')) {
+          setMessages(prev => [...prev, { role: 'assistant', content: `⚠️ Gemini Error: ${err.message}`, provider: 'Error' }])
+          setLoading(false)
+          return
+        }
       }
     }
 
@@ -191,7 +201,7 @@ const ChatWidget = forwardRef(({ placeholder = "Ask your AI copilot anything…"
     return "I can help you build your app! Try asking me to 'add a text input' or 'add a chat block'. I'll update the canvas for you."
   }
 
-  const hasGemini = !!(localStorage.getItem('VITE_GOOGLE_API_KEY') || import.meta.env.VITE_GOOGLE_API_KEY)
+  const hasGemini = getGeminiKeys().length > 0 || !!import.meta.env.VITE_GOOGLE_API_KEY
   const hasClaude = !!(localStorage.getItem('VITE_ANTHROPIC_API_KEY') || import.meta.env.VITE_ANTHROPIC_API_KEY)
   const isLive   = hasGemini || hasClaude
 

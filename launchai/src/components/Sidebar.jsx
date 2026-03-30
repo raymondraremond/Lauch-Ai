@@ -1,5 +1,6 @@
 import { NavLink, Link, useLocation } from 'react-router-dom'
 import { LayoutDashboard, Wand2, MessageSquare, Compass, Rocket, Settings, ChevronRight, Target } from 'lucide-react'
+import { getGeminiKeys } from '../lib/ApiKeyManager.js'
 
 const nav = [
   { label: 'Dashboard',  icon: LayoutDashboard, path: '/dashboard'  },
@@ -15,7 +16,7 @@ export default function Sidebar() {
   const loc = useLocation()
 
   // API Key Check
-  const hasGemini = !!(import.meta.env.VITE_GOOGLE_API_KEY || localStorage.getItem('VITE_GOOGLE_API_KEY'))
+  const hasGemini = getGeminiKeys().length > 0 || !!import.meta.env.VITE_GOOGLE_API_KEY
   const hasClaude = !!(import.meta.env.VITE_ANTHROPIC_API_KEY || localStorage.getItem('VITE_ANTHROPIC_API_KEY'))
   const isLive   = hasGemini || hasClaude
   
