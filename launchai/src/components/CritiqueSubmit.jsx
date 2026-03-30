@@ -83,6 +83,9 @@ export default function CritiqueSubmit() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('[DEBUG] Submission Type:', submissionType);
+    console.log('[DEBUG] Form Data:', formData);
+    
     if (submissionType === 'text') {
       if (!formData.projectTitle || !formData.projectDescription || !formData.targetAudience || !formData.aiFeatures) {
         setErrorMsg('Please fill out all fields.');
@@ -445,7 +448,7 @@ export default function CritiqueSubmit() {
         </button>
         
         <p className="text-center text-[11px] text-text-muted uppercase tracking-[0.15em] font-medium">
-          Powered by Gemini 1.5 Pro · Context-Aware Analysis
+          Powered by Gemini 3.0 Pro · Context-Aware Analysis
         </p>
       </form>
     </div>

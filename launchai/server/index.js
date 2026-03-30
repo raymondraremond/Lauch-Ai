@@ -96,14 +96,17 @@ const server = http.createServer(async (req, res) => {
         contents = [{ role: 'user', parts: [{ text: promptText }] }];
       }
 
+      console.log(`[Critique] Generating ${tier} critique for "${projectTitle}" using Gemini 3.1 Pro-preview...`);
+
       if (!apiKey) {
+         console.error('[Critique] API key not configured');
          res.writeHead(500, { 'Content-Type': 'application/json' });
          res.end(JSON.stringify({ error: 'API key not configured' }));
          return;
       }
 
-      // Call Gemini 2.5 Pro endpoint
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`, {
+      // Call Gemini 3.1 Pro-preview endpoint
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -115,10 +118,13 @@ const server = http.createServer(async (req, res) => {
       const data = await response.json();
       
       if (data.error) {
+        console.error('[Critique] Gemini API Error:', data.error.message || data.error);
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: data.error.message || 'Gemini API Error' }));
         return;
       }
+
+      console.log('[Critique] Successfully generated critique');
 
       const critique = data.candidates?.[0]?.content?.parts?.[0]?.text || "No critique returned.";
 

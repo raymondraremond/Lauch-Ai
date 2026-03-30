@@ -209,7 +209,7 @@ export default function CritiqueResult({ critique, projectTitle, tier, onReset }
           <span className="text-dim">·</span>
           <div className="flex items-center gap-1.5 text-xs text-text-muted">
             <Gauge size={12} />
-            Gemini 1.5 Pro
+            Gemini 3.0 Pro
           </div>
         </div>
       </div>
