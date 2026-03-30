@@ -105,8 +105,8 @@ const server = http.createServer(async (req, res) => {
          return;
       }
 
-      // Call Gemini 1.5 Flash endpoint (Free Tier Optimization)
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+      // Call Gemini 3.1 Pro Preview endpoint for advanced reasoning capability
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
