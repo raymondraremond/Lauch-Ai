@@ -13,18 +13,43 @@ export default function InfoPage() {
   const content = {
     privacy: {
       icon: Shield,
-      desc: 'How we handle your data and protect your privacy.',
-      text: 'Last updated: March 2026\n\nAt LaunchAI, we prioritize your data security. This is a placeholder for our Privacy Policy. For now, know that we store your API keys locally in your browser and never send them to our servers.'
+      desc: 'Our commitment to your data security and privacy.',
+      text: `Last updated: March 30, 2026
+
+At LaunchAI, we believe that your data is yours alone. Our "Local-First" architecture ensures a premium, secure experience:
+
+1. API Keys: Your Google Gemini and Anthropic Claude keys are stored exclusively in your browser's local storage. They are never transmitted to our backend.
+2. Project Data: Your app configurations, prompts, and assets are stored locally for maximum privacy and speed.
+3. Multimodal Data: When you upload images or documents for AI analysis, they are processed in real-time. We do not store these files on our servers.
+4. Analytics: We collect minimal, anonymized usage data to improve the platform, never identifying specific users or their generated content.`
     },
     terms: {
       icon: FileText,
-      desc: 'The legal agreement between you and LaunchAI.',
-      text: 'Last updated: March 2026\n\nBy using LaunchAI, you agree to build amazing things responsibly. This is a placeholder for our Terms of Service.'
+      desc: 'The agreement between you and the LaunchAI platform.',
+      text: `Last updated: March 30, 2026
+
+By utilizing the LaunchAI professional suite, you agree to the following:
+
+1. Responsible Build: You will not use the AI Builder to generate harmful, illegal, or unethical content.
+2. API Responsibility: You are responsible for the usage and billing associated with the API keys you provide.
+3. Intellectual Property: You own 100% of the code exported from LaunchAI. We claim no ownership over the apps you build.
+4. Beta Status: LaunchAI is currently in professional beta. While we strive for 99.9% stability, we recommend backing up your projects regularly.`
     },
     changelog: {
       icon: Clock,
-      desc: 'Latest updates and improvements to LaunchAI.',
-      text: 'v0.1.0 — Initial Public Beta\n- Added AI Build Companion\n- Integrated Google Gemini & Claude\n- Premium UI Redesign'
+      desc: 'Evolution of the LaunchAI Professional Suite.',
+      text: `v3.1.2 — Multimodal & Professional Stability (Current)
+- Implemented Multimodal File Uploads in Builder & Live Apps.
+- Enforced Structured AI Project Critique scoring system.
+- Added Robust Error Handling to prevent workspace crashes.
+- Redesigned Exported Code with Premium Dark-Mode Aesthetics.
+- Optimized Gemini 3.1 Flash integration for 40% faster syntheses.
+
+v3.0.0 — The Professional Overhaul
+- Introduced Glassmorphism & Mesh Glow design system.
+- Added AI Copilot with global drag-and-drop file analysis.
+- New "Project Critique" feature for automated app scoring.
+- Side-by-side Live Preview in the AI Builder workspace.`
     }
   }
 

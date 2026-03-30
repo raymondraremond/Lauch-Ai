@@ -57,13 +57,19 @@ export default function CritiqueResult({ critique, projectTitle, tier, onReset }
 
   // Extract score if possible, or provide a default for "Concept Score"
   const getScore = () => {
-    const scoreSection = sections.find(s => s.title.includes('SCORE') || s.title.includes('VERDICT'));
+    const scoreSection = sections.find(s => s.title.includes('SCORE'));
     if (scoreSection) {
-      const match = scoreSection.content.match(/(\d+)\/100/);
+      // Look specifically for the X/100 format we now request
+      const match = scoreSection.title.match(/(\d+)\/100/);
       if (match) return parseInt(match[1]);
+      
+      // Fallback: check content if it wasn't in the title
+      const contentMatch = scoreSection.content.match(/(\d+)\/100/);
+      if (contentMatch) return parseInt(contentMatch[1]);
     }
-    // Default semi-random high score for positive vibes if not found
-    return 85; 
+    // Default to 0 instead of 85 so it's obvious if parsing fails, 
+    // or we can keep a "neutral" 70. Let's use 0 to encourage better prompt adherence.
+    return 0; 
   };
 
   const score = getScore();
@@ -209,7 +215,7 @@ export default function CritiqueResult({ critique, projectTitle, tier, onReset }
           <span className="text-dim">·</span>
           <div className="flex items-center gap-1.5 text-xs text-text-muted">
             <Gauge size={12} />
-            Gemini 3.0 Pro
+            Gemini 3.1 Flash
           </div>
         </div>
       </div>
