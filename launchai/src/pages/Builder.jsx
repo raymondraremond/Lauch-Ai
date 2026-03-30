@@ -24,6 +24,13 @@ const PALETTE = [
   { type: 'file-upload', label: 'File Upload',   icon: UploadCloud,   preview: <div className="p-2 border border-dashed border-secondary bg-overlay rounded-[8px] flex items-center justify-center gap-2"><UploadCloud size={14} className="text-secondary"/><span className="text-[10px] text-secondary">Drop files...</span></div> },
 ]
 
+function InteractivePreview({ comp, palette }) {
+  const [val, setVal] = useState('');
+  if (comp.type === 'text-input') return <input value={val} onChange={e=>setVal(e.target.value)} onClick={e=>e.stopPropagation()} placeholder="Enter text…" className="input w-full" />;
+  if (comp.type === 'textarea') return <textarea value={val} onChange={e=>setVal(e.target.value)} onClick={e=>e.stopPropagation()} placeholder="Enter description…" rows={2} className="input resize-none w-full" />;
+  return palette?.preview;
+}
+
 export default function Builder() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -374,7 +381,7 @@ export default function App() {
                         <div key={comp.id} onClick={() => !showPreview && setSelected(isSelected ? null : comp.id)}
                              className={`group relative p-[16px] rounded-[8px] border transition-all duration-150 cursor-pointer ${isSelected ? 'border-accent bg-accent-dim' : 'border-transparent hover:border-base hover:bg-raised'}`}>
                           <label className={`block font-body text-[13px] font-medium mb-[8px] ${isSelected ? 'text-accent' : 'text-secondary'}`}>{comp.label}</label>
-                          <div className={showPreview ? "" : "pointer-events-none"}>{palette?.preview}</div>
+                          <div className="" onClick={e => showPreview && e.stopPropagation()}><InteractivePreview comp={comp} palette={palette} /></div>
                           {!showPreview && (
                             <div className={`absolute top-[8px] right-[8px] flex gap-[4px] transition-opacity duration-150 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                               <button onClick={e => { e.stopPropagation(); moveComponent(comp.id, 'up') }} className="w-[28px] h-[28px] rounded-[6px] bg-base hover:bg-[var(--border-lit)] border border-base flex items-center justify-center" disabled={index === 0}><ChevronUp size={13} /></button>
