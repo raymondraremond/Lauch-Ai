@@ -2,19 +2,26 @@ import { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Send, Bot, User, Loader } from 'lucide-react'
 
-const SYSTEM_PROMPT = `You are the LaunchAI Copilot — an expert AI product-building assistant for non-technical founders. 
-You help users:
-1. Clarify and validate their AI product idea
-2. Plan data flows and user logic step by step
-3. Suggest no-code tools and workflows
-4. Write effective prompts for their AI features
-5. Debug issues in plain English
+const SYSTEM_PROMPT = `You are the LaunchAI Copilot — an expert AI product-building assistant.
+You help users build their AI apps by suggesting and adding components to the canvas.
 
-Always be concise, structured, and encouraging. Use numbered steps when giving instructions.
-When suggesting tools, briefly explain WHY that tool fits the user's context.
-Never overwhelm — give one clear next step at a time.`
+AVAILABLE COMPONENTS:
+- text-input: For short text entries
+- textarea: For long text or content
+- toggle: For on/off settings
+- dropdown: For selecting from a list
+- ai-chat: A chat interface for AI interaction
+- chart: For data visualization
 
-export default function ChatWidget({ placeholder = "Ask your AI copilot anything…", compact = false }) {
+ACTION TAGS:
+If you want to add a component, include this tag in your message:
+[ACTION:ADD, type:COMPONENT_TYPE, label:DISPLAY_LABEL]
+
+Example: "I've added a text input for the user's name. [ACTION:ADD, type:text-input, label:User Name]"
+
+Keep responses concise and focused on building. One step at a time.`
+
+export default function ChatWidget({ placeholder = "Ask your AI copilot anything…", compact = false, onAction = () => {} }) {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
@@ -40,6 +47,22 @@ export default function ChatWidget({ placeholder = "Ask your AI copilot anything
     setMessages(updated)
     setLoading(true)
 
+    const processReply = (reply, provider) => {
+      // Parse actions: [ACTION:ADD, type:text-input, label:Name]
+      const actionRegex = /\[ACTION:(\w+),\s*type:([\w-]+),\s*label:([^\]]+)\]/g
+      let match
+      let cleanReply = reply
+
+      while ((match = actionRegex.exec(reply)) !== null) {
+        const [full, action, type, label] = match
+        onAction({ action, type, label: label.trim() })
+        cleanReply = cleanReply.replace(full, '').trim()
+      }
+
+      setMessages(prev => [...prev, { role: 'assistant', content: cleanReply, provider }])
+      setLoading(false)
+    }
+
     // Check localStorage first, then fallback to import.meta.env
     const anthropicKey = localStorage.getItem('VITE_ANTHROPIC_API_KEY') || import.meta.env.VITE_ANTHROPIC_API_KEY
     const geminiKey    = localStorage.getItem('VITE_GOOGLE_API_KEY') || import.meta.env.VITE_GOOGLE_API_KEY
@@ -48,28 +71,24 @@ export default function ChatWidget({ placeholder = "Ask your AI copilot anything
     if (geminiKey) {
       try {
         const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-              contents: [{ role: 'user', parts: [{ text: text }] }],
+              contents: updated.map(m => ({
+                role: m.role === 'assistant' ? 'model' : 'user',
+                parts: [{ text: m.content }]
+              })),
               generationConfig: { maxOutputTokens: 800, temperature: 0.7 },
             }),
           }
         )
         const data = await res.json()
-        if (data.error) {
-          console.error('Gemini error:', data.error)
-          setMessages(prev => [...prev, { role: 'assistant', content: `❌ Gemini Error: ${data.error.message}`, provider: 'Error' }])
-          setLoading(false)
-          return
-        }
         const reply = data.candidates?.[0]?.content?.parts?.[0]?.text
         if (reply) {
-          setMessages(prev => [...prev, { role: 'assistant', content: reply, provider: 'Gemini' }])
-          setLoading(false)
+          processReply(reply, 'Gemini')
           return
         }
       } catch (err) {
@@ -98,8 +117,7 @@ export default function ChatWidget({ placeholder = "Ask your AI copilot anything
         const data = await res.json()
         const reply = data.content?.[0]?.text
         if (reply) {
-          setMessages(prev => [...prev, { role: 'assistant', content: reply, provider: 'Claude' }])
-          setLoading(false)
+          processReply(reply, 'Claude')
           return
         }
       } catch (err) {
@@ -108,24 +126,19 @@ export default function ChatWidget({ placeholder = "Ask your AI copilot anything
     }
 
     // 3. Demo Fallback
-    await new Promise(r => setTimeout(r, 900))
-    setMessages(prev => [...prev, {
-      role: 'assistant',
-      content: getDemoResponse(text),
-      provider: 'Demo',
-    }])
-    setLoading(false)
+    await new Promise(r => setTimeout(r, 800))
+    processReply(getDemoResponse(text), 'Demo')
   }
 
   function getDemoResponse(text) {
     const t = text.toLowerCase()
-    if (t.includes('idea') || t.includes('build') || t.includes('make'))
-      return "Great start! Let's validate this idea. **Step 1:** Define your target user in one sentence — who specifically has this problem? Then tell me: is this problem they *pay* to solve today (even manually)?"
-    if (t.includes('prompt') || t.includes('chatgpt') || t.includes('gpt'))
-      return "Prompt engineering tip 💡\n\nA strong prompt has 3 parts:\n1. **Role** — tell the AI who it is (\"You are an invoice analyzer\")\n2. **Task** — clear instruction with format (\"Extract: vendor, amount, date as JSON\")\n3. **Constraints** — rules to follow (\"Only return valid JSON, no explanation\")\n\nWant me to write a prompt for your specific use case?"
-    if (t.includes('tool') || t.includes('bubble') || t.includes('zapier') || t.includes('no-code'))
-      return "For non-technical builders, I recommend this stack:\n\n- **Front-end:** Lovable.dev or Glide (fastest to launch)\n- **Workflows:** n8n (free, self-host) or Make.com\n- **Database:** Airtable or Supabase\n- **AI calls:** Connect via webhook to Anthropic/OpenAI API\n\nWhat type of product are you building? I'll narrow it down to 1-2 tools."
-    return "That's a great question! Let me break that down.\n\nThe key thing to focus on first is **validating the core problem** — not the technology. Tell me:\n\n1. Who experiences this problem?\n2. How often does it happen?\n3. What do they do today to solve it?\n\nOnce we answer those, picking the right AI approach becomes much easier."
+    if (t.includes('text') || t.includes('input'))
+      return "Done! I've added a text input for you. [ACTION:ADD, type:text-input, label:New Input]"
+    if (t.includes('chat') || t.includes('ai'))
+      return "I've added an AI Chat block so your users can talk to your model. [ACTION:ADD, type:ai-chat, label:AI Assistant]"
+    if (t.includes('check') || t.includes('toggle'))
+      return "Added a toggle switch for you. [ACTION:ADD, type:toggle, label:Enable Feature]"
+    return "I can help you build your app! Try asking me to 'add a text input' or 'add a chat block'. I'll update the canvas for you."
   }
 
   const hasGemini = !!(localStorage.getItem('VITE_GOOGLE_API_KEY') || import.meta.env.VITE_GOOGLE_API_KEY)

@@ -11,8 +11,8 @@ import {
 } from 'lucide-react'
 
 const PALETTE = [
-  { type: 'text-input',  label: 'Text Input',   icon: Type,          preview: <input readOnly placeholder="Enter text…" className="input cursor-default pointer-events-none" /> },
-  { type: 'textarea',    label: 'Text Area',     icon: AlignLeft,     preview: <textarea readOnly placeholder="Enter description…" rows={2} className="input resize-none cursor-default pointer-events-none" /> },
+  { type: 'text-input',  label: 'Text Input',   icon: Type,          preview: <input readOnly placeholder="Enter text…" className="input" /> },
+  { type: 'textarea',    label: 'Text Area',     icon: AlignLeft,     preview: <textarea readOnly placeholder="Enter description…" rows={2} className="input resize-none" /> },
   { type: 'toggle',      label: 'Toggle',        icon: ToggleLeft,    preview: <div className="flex items-center gap-[8px]"><div className="w-[32px] h-[16px] rounded-full bg-accent/40 relative"><div className="absolute right-[2px] top-[2px] w-[12px] h-[12px] rounded-full bg-accent" /></div><span className="font-body text-[13px] text-secondary">Enabled</span></div> },
   { type: 'dropdown',    label: 'Dropdown',      icon: List,          preview: <select disabled className="input cursor-default opacity-50"><option>Select option…</option></select> },
   { type: 'ai-chat',     label: 'AI Chat Widget',icon: MessageSquare, preview: <div className="p-2 border border-dashed border-accent bg-accent-dim rounded-[8px] font-mono text-[11px] uppercase tracking-[0.05em] text-accent flex items-center gap-[4px]"><MessageSquare size={13}/> AI Chat Block</div> },
@@ -90,6 +90,13 @@ export default function Builder() {
   function handleStartBlank() {
     setShowTemplateModal(false)
   }
+
+  const handleAiAction = useCallback((actionData) => {
+    if (actionData.action === 'ADD') {
+      const { type, label } = actionData
+      setComponents(prev => [...prev, { id: Date.now(), type, label }])
+    }
+  }, [])
 
   return (
     <div className="min-h-screen bg-void font-body flex flex-col overflow-hidden">
@@ -192,7 +199,7 @@ export default function Builder() {
                     return (
                       <div
                         key={comp.id}
-                        onClick={() => setSelected(isSelected ? null : comp.id)}
+                        onClick={() => !showPreview && setSelected(isSelected ? null : comp.id)}
                         className={`group relative p-[16px] rounded-[8px] border transition-all duration-150 cursor-pointer
                           ${isSelected
                             ? 'border-accent bg-accent-dim'
@@ -219,7 +226,7 @@ export default function Builder() {
                         )}
 
                         {/* Preview */}
-                        <div className="select-none pointer-events-none">
+                        <div className={showPreview ? "select-none" : "select-none pointer-events-none"}>
                           {palette?.preview}
                         </div>
 
@@ -260,6 +267,7 @@ export default function Builder() {
             <ChatWidget
               compact
               placeholder="Describe a component to add…"
+              onAction={handleAiAction}
             />
           </div>
         </aside>
