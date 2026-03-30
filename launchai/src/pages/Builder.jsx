@@ -12,10 +12,10 @@ import {
 } from 'lucide-react'
 
 const PALETTE = [
-  { type: 'text-input',  label: 'Text Input',   icon: Type,          preview: <input readOnly placeholder="Enter text…" className="input" /> },
-  { type: 'textarea',    label: 'Text Area',     icon: AlignLeft,     preview: <textarea readOnly placeholder="Enter description…" rows={2} className="input resize-none" /> },
+  { type: 'text-input',  label: 'Text Input',   icon: Type,          preview: <input placeholder="Enter text…" className="input" /> },
+  { type: 'textarea',    label: 'Text Area',     icon: AlignLeft,     preview: <textarea placeholder="Enter description…" rows={2} className="input resize-none" /> },
   { type: 'toggle',      label: 'Toggle',        icon: ToggleLeft,    preview: <div className="flex items-center gap-[8px]"><div className="w-[32px] h-[16px] rounded-full bg-accent/40 relative"><div className="absolute right-[2px] top-[2px] w-[12px] h-[12px] rounded-full bg-accent" /></div><span className="font-body text-[13px] text-secondary">Enabled</span></div> },
-  { type: 'dropdown',    label: 'Dropdown',      icon: List,          preview: <select disabled className="input cursor-default opacity-50"><option>Select option…</option></select> },
+  { type: 'dropdown',    label: 'Dropdown',      icon: List,          preview: <select className="input cursor-default opacity-50"><option>Select option…</option></select> },
   { type: 'weather-card',label: 'Weather Card',  icon: Cloud,         preview: <div className="p-3 bg-raised border border-base rounded-[8px] flex items-center justify-between"><div className="flex flex-col"><span className="text-[18px] font-mono text-primary">24°C</span><span className="text-[11px] text-secondary uppercase tracking-wider">Partly Cloudy</span></div><Cloud size={24} className="text-secondary" /></div> },
   { type: 'api-status',  label: 'API Status',    icon: Activity,      preview: <div className="p-2 border border-success/20 bg-success/5 rounded-[6px] flex items-center gap-2"><div className="w-[6px] h-[6px] rounded-full bg-success animate-pulse" /><span className="font-mono text-[10px] text-success uppercase tracking-wider">Backend Healthy</span></div> },
   { type: 'structured-result', label: 'AI Output Box', icon: FileText, preview: <div className="p-3 border border-dim bg-overlay rounded-[8px] space-y-2"><div className="h-[4px] w-[60%] bg-accent/20 rounded-full" /><div className="h-[4px] w-[40%] bg-accent/10 rounded-full" /></div> },
