@@ -7,7 +7,8 @@ import { getProjectById, saveProject, getBestPracticeTemplate } from '../lib/Pro
 import {
   Type, AlignLeft, ToggleLeft, List, MessageSquare, BarChart2,
   Trash2, Move, Eye, Save, Rocket, GripVertical, Plus, Settings2,
-  Check, Sparkles, ArrowRight
+  Check, Sparkles, ArrowRight, Cloud, Activity, FileText, Download, X,
+  ChevronUp, ChevronDown, UploadCloud
 } from 'lucide-react'
 
 const PALETTE = [
@@ -15,8 +16,12 @@ const PALETTE = [
   { type: 'textarea',    label: 'Text Area',     icon: AlignLeft,     preview: <textarea readOnly placeholder="Enter description…" rows={2} className="input resize-none" /> },
   { type: 'toggle',      label: 'Toggle',        icon: ToggleLeft,    preview: <div className="flex items-center gap-[8px]"><div className="w-[32px] h-[16px] rounded-full bg-accent/40 relative"><div className="absolute right-[2px] top-[2px] w-[12px] h-[12px] rounded-full bg-accent" /></div><span className="font-body text-[13px] text-secondary">Enabled</span></div> },
   { type: 'dropdown',    label: 'Dropdown',      icon: List,          preview: <select disabled className="input cursor-default opacity-50"><option>Select option…</option></select> },
+  { type: 'weather-card',label: 'Weather Card',  icon: Cloud,         preview: <div className="p-3 bg-raised border border-base rounded-[8px] flex items-center justify-between"><div className="flex flex-col"><span className="text-[18px] font-mono text-primary">24°C</span><span className="text-[11px] text-secondary uppercase tracking-wider">Partly Cloudy</span></div><Cloud size={24} className="text-secondary" /></div> },
+  { type: 'api-status',  label: 'API Status',    icon: Activity,      preview: <div className="p-2 border border-success/20 bg-success/5 rounded-[6px] flex items-center gap-2"><div className="w-[6px] h-[6px] rounded-full bg-success animate-pulse" /><span className="font-mono text-[10px] text-success uppercase tracking-wider">Backend Healthy</span></div> },
+  { type: 'structured-result', label: 'AI Output Box', icon: FileText, preview: <div className="p-3 border border-dim bg-overlay rounded-[8px] space-y-2"><div className="h-[4px] w-[60%] bg-accent/20 rounded-full" /><div className="h-[4px] w-[40%] bg-accent/10 rounded-full" /></div> },
   { type: 'ai-chat',     label: 'AI Chat Widget',icon: MessageSquare, preview: <div className="p-2 border border-dashed border-accent bg-accent-dim rounded-[8px] font-mono text-[11px] uppercase tracking-[0.05em] text-accent flex items-center gap-[4px]"><MessageSquare size={13}/> AI Chat Block</div> },
   { type: 'chart',       label: 'Chart',         icon: BarChart2,     preview: <div className="flex items-end gap-[4px] h-[32px]">{[60,40,80,50,90,70].map((h,i)=><div key={i} style={{height:`${h}%`}} className="flex-1 rounded-[2px] bg-accent/40" />)}</div> },
+  { type: 'file-upload', label: 'File Upload',   icon: UploadCloud,   preview: <div className="p-2 border border-dashed border-secondary bg-overlay rounded-[8px] flex items-center justify-center gap-2"><UploadCloud size={14} className="text-secondary"/><span className="text-[10px] text-secondary">Drop files...</span></div> },
 ]
 
 export default function Builder() {
@@ -35,6 +40,9 @@ export default function Builder() {
   const [draggingPalette, setDragging] = useState(null)
   const [labelEdit, setLabelEdit]     = useState({})
   const [showTemplateModal, setShowTemplateModal] = useState(!projectId)
+  const [isGlobalDragging, setIsGlobalDragging] = useState(false)
+  const [dragCounter, setDragCounter] = useState(0)
+  const chatRef = useRef(null)
 
   // Load project or initialize
   useEffect(() => {
@@ -50,7 +58,16 @@ export default function Builder() {
 
   function addComponent(type) {
     const def = PALETTE.find(p => p.type === type)
-    setComponents(prev => [...prev, { id: Date.now(), type, label: def.label }])
+    const id = Date.now()
+    const newComp = { 
+      id, 
+      type, 
+      label: def.label,
+      variableId: `${type.replace(/-/g, '_')}_${id.toString().slice(-4)}`,
+      systemPrompt: type === 'structured-result' || type === 'ai-chat' ? "Analyze the input and provide a detailed response." : ""
+    }
+    setComponents(prev => [...prev, newComp])
+    setSelected(id)
   }
 
   function removeComponent(id) {
@@ -58,8 +75,20 @@ export default function Builder() {
     if (selected === id) setSelected(null)
   }
 
-  function updateLabel(id, val) {
-    setComponents(prev => prev.map(c => c.id === id ? { ...c, label: val } : c))
+  function updateComponent(id, updates) {
+    setComponents(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c))
+  }
+
+  function moveComponent(id, direction) {
+    const idx = components.findIndex(c => c.id === id)
+    if (idx === -1) return
+    const newIdx = direction === 'up' ? idx - 1 : idx + 1
+    if (newIdx < 0 || newIdx >= components.length) return
+    
+    const newComponents = [...components]
+    const [removed] = newComponents.splice(idx, 1)
+    newComponents.splice(newIdx, 0, removed)
+    setComponents(newComponents)
   }
 
   const handleSave = useCallback(() => {
@@ -78,6 +107,7 @@ export default function Builder() {
       setSaveSuccess(true)
       setTimeout(() => setSaveSuccess(false), 2000)
     }, 800)
+    return saved
   }, [projectIdState, projectName, components])
 
   function handleUseTemplate() {
@@ -93,13 +123,177 @@ export default function Builder() {
 
   const handleAiAction = useCallback((actionData) => {
     if (actionData.action === 'ADD') {
-      const { type, label } = actionData
-      setComponents(prev => [...prev, { id: Date.now(), type, label }])
+      const { type, label, variableId, systemPrompt } = actionData
+      const id = Date.now()
+      setComponents(prev => [...prev, { 
+        id, 
+        type, 
+        label,
+        variableId: variableId || `${type.replace(/-/g, '_')}_${id.toString().slice(-4)}`,
+        systemPrompt: systemPrompt || (type === 'structured-result' || type === 'ai-chat' ? "Analyze the input and provide a detailed response." : "")
+      }])
+      setSelected(id)
     }
   }, [])
 
+  // Global Drag & Drop Handler
+  useEffect(() => {
+    const handleWindowDragOver = (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+
+    const handleWindowDragEnter = (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      // Only show overlay if dragging files
+      if (e.dataTransfer.types.includes('Files')) {
+        setDragCounter(prev => prev + 1)
+        setIsGlobalDragging(true)
+      }
+    }
+
+    const handleWindowDragLeave = (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (e.dataTransfer.types.includes('Files')) {
+        const next = dragCounter - 1
+        setDragCounter(next)
+        if (next <= 0) setIsGlobalDragging(false)
+      }
+    }
+
+    const handleWindowDrop = (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      setIsGlobalDragging(false)
+      setDragCounter(0)
+
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        if (chatRef.current) {
+          chatRef.current.handleFiles(e.dataTransfer.files)
+        }
+      }
+    }
+
+    window.addEventListener('dragover', handleWindowDragOver)
+    window.addEventListener('dragenter', handleWindowDragEnter)
+    window.addEventListener('dragleave', handleWindowDragLeave)
+    window.addEventListener('drop', handleWindowDrop)
+
+    return () => {
+      window.removeEventListener('dragover', handleWindowDragOver)
+      window.removeEventListener('dragenter', handleWindowDragEnter)
+      window.removeEventListener('dragleave', handleWindowDragLeave)
+      window.removeEventListener('drop', handleWindowDrop)
+    }
+  }, [dragCounter])
+
+  function downloadProjectCode() {
+    const code = `
+import React, { useState } from 'react';
+import { Zap, Send, MessageSquare, Cloud, Activity, BarChart2, CheckCircle } from 'lucide-react';
+
+/**
+ * ${projectName} - Generated by LaunchAI
+ * This is a standalone React + Tailwind component.
+ * Instructions:
+ * 1. Ensure 'lucide-react' and 'tailwind-css' are installed.
+ * 2. Replace YOUR_GEMINI_API_KEY with your real key.
+ */
+
+export default function App() {
+  const [values, setValues] = useState({});
+  const [outputs, setOutputs] = useState({});
+  const [isProcessing, setIsProcessing] = useState(false);
+  const API_KEY = "YOUR_GEMINI_API_KEY";
+
+  const components = ${JSON.stringify(components, null, 2)};
+
+  async function handleRun() {
+    setIsProcessing(true);
+    try {
+      const newOutputs = { ...outputs };
+      const varMap = {};
+      components.forEach(c => {
+        if (c.variableId) varMap[c.variableId] = values[c.id] || "";
+      });
+
+      const aiBlocks = components.filter(c => c.systemPrompt);
+      for (const block of aiBlocks) {
+        let parsedPrompt = block.systemPrompt;
+        Object.keys(varMap).forEach(key => {
+          parsedPrompt = parsedPrompt.replace(new RegExp(\`{{\\s*\${key}\\s*}}\`, 'g'), varMap[key]);
+        });
+
+        const res = await fetch(\`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=\${API_KEY}\`, {
+          method: 'POST',
+          body: JSON.stringify({ contents: [{ parts: [{ text: parsedPrompt }] }] })
+        });
+        const data = await res.json();
+        newOutputs[block.id] = data.candidates?.[0]?.content?.parts?.[0]?.text || "Error";
+      }
+      setOutputs(newOutputs);
+    } catch (e) {
+      alert("Execution Failed");
+    } finally {
+      setIsProcessing(false);
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-neutral-950 text-white p-8 font-sans">
+      <div className="max-w-2xl mx-auto space-y-8">
+        <h1 className="text-3xl font-bold tracking-tight">${projectName}</h1>
+        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-8 space-y-6">
+          {components.map(c => (
+            <div key={c.id} className="space-y-2">
+              <label className="text-sm font-medium text-neutral-400">{c.label}</label>
+              {c.type === 'text-input' && <input className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-3" onChange={e => setValues({...values, [c.id]: e.target.value})} />}
+              {c.type === 'textarea' && <textarea className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-3 h-24" onChange={e => setValues({...values, [c.id]: e.target.value})} />}
+              {c.systemPrompt && (
+                <div className="p-4 bg-neutral-950 border border-neutral-800 rounded-lg min-h-[60px]">
+                  {outputs[c.id] || "Results will appear here..."}
+                </div>
+              )}
+            </div>
+          ))}
+          <button onClick={handleRun} disabled={isProcessing} className="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-lg font-bold">
+            {isProcessing ? "Generating..." : "Run AI Output"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+`.trim();
+
+    const blob = new Blob([code], { type: 'text/javascript' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${projectName.replace(/\s+/g, '_').toLowerCase()}.jsx`;
+    a.click();
+  }
+
   return (
     <div className="min-h-screen bg-void font-body flex flex-col overflow-hidden">
+      {/* Global Drag Overlay */}
+      {isGlobalDragging && (
+        <div className="fixed inset-0 z-[200] bg-accent/10 backdrop-blur-xl flex flex-col items-center justify-center p-8 animate-in fade-in duration-300">
+          <div className="absolute inset-0 border-[6px] border-dashed border-accent/40 m-8 rounded-[32px] pointer-events-none" />
+          <div className="card-premium p-12 flex flex-col items-center shadow-2xl scale-110 pointer-events-none">
+            <div className="w-24 h-24 rounded-full bg-accent text-white flex items-center justify-center mb-6 shadow-[0_0_50px_rgba(59,130,246,0.6)] animate-bounce-subtle">
+              <UploadCloud size={48} />
+            </div>
+            <h2 className="font-display text-[32px] font-bold text-primary mb-2 tracking-tight text-center">Drop to Rebuild with AI</h2>
+            <p className="font-body text-[16px] text-secondary text-center max-w-sm">
+              Your screenshot will be instantly analyzed to suggest the best components for your app.
+            </p>
+          </div>
+        </div>
+      )}
+
       <Navbar minimal />
       <Sidebar />
 
@@ -146,6 +340,13 @@ export default function Builder() {
                 {saveSuccess && <span className="font-mono text-[9px] text-success uppercase flex items-center gap-1"><Check size={10}/> Saved</span>}
               </div>
               <button
+                onClick={downloadProjectCode}
+                className="flex items-center gap-[6px] text-[13px] px-[12px] py-[6px] rounded-[6px] border border-base text-secondary hover:text-primary bg-raised hover:border-lit transition-colors"
+                title="Export to Code"
+              >
+                <Download size={14} /> <span className="hidden sm:inline">Export</span>
+              </button>
+              <button
                 onClick={() => setShowPreview(v => !v)}
                 className={`flex items-center gap-[6px] text-[13px] px-[12px] py-[6px] rounded-[6px] border transition-colors duration-150 tracking-[-0.01em]
                   ${showPreview ? 'bg-accent-dim border-accent/40 text-accent font-medium' : 'border-base text-secondary hover:text-primary bg-raised hover:border-lit'}`}
@@ -160,7 +361,10 @@ export default function Builder() {
                 <Save size={14} className={saveSuccess ? 'text-success' : ''} /> <span className="hidden sm:inline">Save</span>
               </button>
               <button
-                onClick={() => navigate('/deploy')}
+                onClick={() => {
+                  const saved = handleSave()
+                  navigate(`/deploy?id=${saved.id}`)
+                }}
                 className="btn-primary text-[13px] px-[16px] py-[6px] !rounded-[6px]"
               >
                 <Rocket size={14} /> <span className="hidden sm:inline">Deploy</span>
@@ -193,7 +397,7 @@ export default function Builder() {
                 )}
 
                 <div className="space-y-[12px]">
-                  {components.map(comp => {
+                  {components.map((comp, index) => {
                     const palette = PALETTE.find(p => p.type === comp.type)
                     const isSelected = selected === comp.id
                     return (
@@ -205,25 +409,7 @@ export default function Builder() {
                             ? 'border-accent bg-accent-dim'
                             : 'border-transparent hover:border-base hover:bg-raised'}`}
                       >
-                        {/* Label */}
-                        {!showPreview && isSelected ? (
-                          <div className="flex items-center gap-[8px] mb-[8px]">
-                            <Settings2 size={14} className="text-accent" />
-                            <input
-                              autoFocus
-                              value={labelEdit[comp.id] ?? comp.label}
-                              onChange={e => {
-                                setLabelEdit(prev => ({ ...prev, [comp.id]: e.target.value }))
-                                updateLabel(comp.id, e.target.value)
-                              }}
-                              className="font-body text-[13px] font-medium text-accent bg-transparent outline-none border-b border-accent/30 pb-[2px] w-full placeholder-accent/50"
-                              placeholder="Component label"
-                              onClick={e => e.stopPropagation()}
-                            />
-                          </div>
-                        ) : (
-                          <label className={`block font-body text-[13px] font-medium mb-[8px] ${isSelected ? 'text-accent' : 'text-secondary'}`}>{comp.label}</label>
-                        )}
+                        <label className={`block font-body text-[13px] font-medium mb-[8px] ${isSelected ? 'text-accent' : 'text-secondary'}`}>{comp.label}</label>
 
                         {/* Preview */}
                         <div className={showPreview ? "select-none" : "select-none pointer-events-none"}>
@@ -234,8 +420,19 @@ export default function Builder() {
                         {!showPreview && (
                           <div className={`absolute top-[8px] right-[8px] flex gap-[4px] transition-opacity duration-150
                             ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                            <button className="w-[28px] h-[28px] rounded-[6px] bg-base hover:bg-[var(--border-lit)] border border-base flex items-center justify-center transition-colors">
-                              <GripVertical size={13} className="text-secondary" />
+                            <button
+                              onClick={e => { e.stopPropagation(); moveComponent(comp.id, 'up') }}
+                              className="w-[28px] h-[28px] rounded-[6px] bg-base hover:bg-[var(--border-lit)] border border-base flex items-center justify-center transition-colors"
+                              disabled={index === 0}
+                            >
+                              <ChevronUp size={13} className={index === 0 ? 'text-text-muted/30' : 'text-secondary'} />
+                            </button>
+                            <button
+                              onClick={e => { e.stopPropagation(); moveComponent(comp.id, 'down') }}
+                              className="w-[28px] h-[28px] rounded-[6px] bg-base hover:bg-[var(--border-lit)] border border-base flex items-center justify-center transition-colors"
+                              disabled={index === components.length - 1}
+                            >
+                              <ChevronDown size={13} className={index === components.length - 1 ? 'text-text-muted/30' : 'text-secondary'} />
                             </button>
                             <button
                               onClick={e => { e.stopPropagation(); removeComponent(comp.id) }}
@@ -254,8 +451,84 @@ export default function Builder() {
           </div>
         </div>
 
+        {/* Properties Panel (Sophistication Layer) */}
+        <aside className={`w-[320px] flex-shrink-0 bg-base border-l border-dim flex flex-col overflow-hidden h-full z-20 transition-all duration-300
+                          ${selected ? 'translate-x-0 opacity-100' : 'translate-x-[320px] opacity-0 pointer-events-none absolute right-0'}`}>
+          {selected && (() => {
+            const comp = components.find(c => c.id === selected)
+            if (!comp) return null
+            return (
+              <>
+                <div className="px-[16px] py-[16px] border-b border-dim flex items-center justify-between bg-base">
+                  <div className="flex items-center gap-[10px]">
+                    <div className="w-[24px] h-[24px] rounded-[5px] bg-accent/10 border border-accent/20 flex justify-center items-center">
+                      <Settings2 size={13} className="text-accent" />
+                    </div>
+                    <span className="font-body text-[14px] font-semibold text-primary tracking-[-0.01em]">Properties</span>
+                  </div>
+                  <button onClick={() => setSelected(null)} className="text-text-muted hover:text-primary transition-colors">
+                    <X size={16} />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-[20px] space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-mono uppercase tracking-widest text-text-muted">Display Label</label>
+                    <input 
+                      className="input w-full bg-void/50 border-base focus:border-accent/40"
+                      value={comp.label}
+                      onChange={e => updateComponent(comp.id, { label: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-mono uppercase tracking-widest text-text-muted">Variable ID</label>
+                      <div className="group relative">
+                        <Sparkles size={12} className="text-accent cursor-help" />
+                        <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-raised border border-base rounded-lg text-[10px] text-secondary opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                          Use this ID in AI prompts like {"{{ " + comp.variableId + " }}"} to inject the user's input.
+                        </div>
+                      </div>
+                    </div>
+                    <input 
+                      className="input w-full bg-void/50 border-base focus:border-accent/40 font-mono text-[12px]"
+                      value={comp.variableId}
+                      onChange={e => updateComponent(comp.id, { variableId: e.target.value.replace(/\s+/g, '_').toLowerCase() })}
+                    />
+                  </div>
+
+                  {(comp.type === 'structured-result' || comp.type === 'ai-chat') && (
+                    <div className="space-y-2 pt-4 border-t border-base">
+                      <label className="text-[11px] font-mono uppercase tracking-widest text-text-muted block mb-2">AI Logic Prompt</label>
+                      <textarea 
+                        className="input w-full bg-void/50 border-base focus:border-accent/40 min-h-[120px] text-[13px] leading-relaxed"
+                        placeholder="Define how this block behaves..."
+                        value={comp.systemPrompt}
+                        onChange={e => updateComponent(comp.id, { systemPrompt: e.target.value })}
+                      />
+                      <p className="text-[10px] text-text-muted leading-relaxed italic">
+                        Tip: Refer to other inputs using brackets, e.g., "Analyze {"{{user_data}}"}"
+                      </p>
+                    </div>
+                  )}
+                  
+                  <div className="pt-6">
+                    <button 
+                      onClick={() => removeComponent(comp.id)}
+                      className="w-full flex items-center justify-center gap-2 py-3 rounded-lg border border-danger/20 bg-danger/5 text-danger hover:bg-danger/10 transition-all text-[13px] font-semibold"
+                    >
+                      <Trash2 size={14} /> Remove Component
+                    </button>
+                  </div>
+                </div>
+              </>
+            )
+          })()}
+        </aside>
+
         {/* AI Copilot Sidebar */}
-        <aside className="w-[340px] flex-shrink-0 bg-base border-l border-dim flex flex-col overflow-hidden h-full z-20 hidden xl:flex">
+        <aside className={`w-[340px] flex-shrink-0 bg-base border-l border-dim flex flex-col overflow-hidden h-full z-20 transition-all
+                          ${selected ? 'hidden' : 'flex'}`}>
           <div className="px-[16px] py-[16px] border-b border-dim flex items-center gap-[12px] bg-base">
             <div className="w-[28px] h-[28px] rounded-[6px] bg-accent-dim border border-glow flex justify-center items-center">
               <MessageSquare size={14} className="text-accent" />
@@ -265,6 +538,7 @@ export default function Builder() {
           </div>
           <div className="flex-1 overflow-hidden p-[16px] pt-0">
             <ChatWidget
+              ref={chatRef}
               compact
               placeholder="Describe a component to add…"
               onAction={handleAiAction}

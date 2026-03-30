@@ -106,10 +106,23 @@ export default function Dashboard() {
                       <span>Updated {p.updated}</span>
                     </div>
                     <div className="flex items-center gap-[8px]">
+                      {p.status === 'live' && (
+                        <a
+                          href={`${window.location.origin}/p/${p.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-[28px] h-[28px] rounded-[6px] hover:bg-accent/10 flex items-center justify-center
+                                     text-accent transition-colors duration-150"
+                          title="Visit Live App"
+                        >
+                          <ExternalLink size={13} />
+                        </a>
+                      )}
                       <button
                         onClick={() => deleteProject(p.id)}
                         className="w-[28px] h-[28px] rounded-[6px] hover:bg-danger/10 flex items-center justify-center
                                    text-text-muted hover:text-danger transition-colors duration-150"
+                        title="Delete Project"
                       >
                         <Trash2 size={13} />
                       </button>
@@ -117,7 +130,7 @@ export default function Dashboard() {
                         onClick={() => navigate(`/builder?id=${p.id}`)}
                         className="flex items-center gap-[4px] font-body text-[13px] text-accent hover:text-accent-hover font-medium transition-colors duration-150"
                       >
-                        Open <ArrowRight size={14} />
+                        Edit <ArrowRight size={14} />
                       </button>
                     </div>
                   </div>

@@ -107,13 +107,20 @@ export function deleteProject(id) {
  */
 export function getBestPracticeTemplate() {
   return {
-    name: 'Smart Assistant',
-    desc: 'A versatile AI-powered assistant for your business.',
-    tag: 'Assistant',
+    name: 'Marketing Genius AI',
+    desc: 'Professional-grade ad copy and product descriptions generator.',
+    tag: 'Marketing',
     components: [
-      { id: 1, type: 'text-input', label: 'User Context / Name' },
-      { id: 2, type: 'textarea',   label: 'Your Question' },
-      { id: 3, type: 'ai-chat',    label: 'AI Response' }
+      { id: 1, type: 'text-input', label: 'Product Name', variableId: 'product_name' },
+      { id: 2, type: 'dropdown',   label: 'Brand Tone',  variableId: 'tone' },
+      { id: 3, type: 'textarea',   label: 'Key Benefits', variableId: 'benefits' },
+      { 
+        id: 4, 
+        type: 'structured-result', 
+        label: 'Generated Ad Copy', 
+        variableId: 'ad_copy',
+        systemPrompt: 'Act as a world-class copywriter. Write a compelling, {{tone}} advertisement for {{product_name}} focusing on these benefits: {{benefits}}. Use a professional structure with a headline and two paragraphs.'
+      }
     ]
   }
 }

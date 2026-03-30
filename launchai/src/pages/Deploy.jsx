@@ -1,24 +1,40 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar.jsx'
 import Sidebar from '../components/Sidebar.jsx'
 import { Rocket, CheckCircle, Globe, Share2, Copy, ArrowRight, ExternalLink, Loader } from 'lucide-react'
+import { getProjectById, saveProject } from '../lib/ProjectStore.js'
 
 export default function Deploy() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const id = searchParams.get('id')
+  
   const [isDeploying, setIsDeploying] = useState(true)
   const [copied, setCopied] = useState(false)
+  const [project, setProject] = useState(null)
 
-  // Simulation of deployment process
   useEffect(() => {
-    const timer = setTimeout(() => {
+    if (id) {
+      const p = getProjectById(id)
+      if (p) {
+        setProject(p)
+        // Simulate a real deployment delay then update status
+        const timer = setTimeout(() => {
+          saveProject({ ...p, status: 'live' })
+          setIsDeploying(false)
+        }, 2500)
+        return () => clearTimeout(timer)
+      }
+    } else {
       setIsDeploying(false)
-    }, 2500)
-    return () => clearTimeout(timer)
-  }, [])
+    }
+  }, [id])
+
+  const liveUrl = `${window.location.origin}/p/${id}`
 
   function handleCopy() {
-    navigator.clipboard.writeText('https://launchai.app/p/invoice-analyzer-9x2')
+    navigator.clipboard.writeText(liveUrl)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -72,7 +88,7 @@ export default function Deploy() {
                     <div className="flex items-stretch gap-2 mb-4">
                       <div className="flex-1 bg-void border border-base rounded-[8px] px-4 py-3 flex items-center gap-3">
                         <Globe size={14} className="text-text-muted" />
-                        <span className="font-mono text-[13px] text-secondary truncate">launchai.app/p/invoice-analyzer-9x2</span>
+                        <span className="font-mono text-[13px] text-secondary truncate">{liveUrl.replace('http://', '').replace('https://', '')}</span>
                       </div>
                       <button 
                         onClick={handleCopy}
@@ -85,9 +101,10 @@ export default function Deploy() {
 
                     <div className="flex items-center gap-4">
                       <a 
-                        href="#" 
+                        href={liveUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="btn-primary px-6 py-2.5 rounded-[7px] text-[13px]"
-                        onClick={(e) => e.preventDefault()}
                       >
                         Visit Live App <ExternalLink size={14} />
                       </a>

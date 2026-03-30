@@ -2,7 +2,8 @@ import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar.jsx'
 import Sidebar from '../components/Sidebar.jsx'
 import ChatWidget from '../components/ChatWidget.jsx'
-import { Lightbulb, Code2, Zap, TrendingUp, Compass, ArrowRight } from 'lucide-react'
+import { Lightbulb, Code2, Zap, TrendingUp, Compass, ArrowRight, UploadCloud } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
 
 const SUGGESTIONS = [
   { icon: Lightbulb, text: 'Help me validate my AI product idea' },
@@ -13,9 +14,80 @@ const SUGGESTIONS = [
 
 export default function Copilot() {
   const navigate = useNavigate()
+  const [isGlobalDragging, setIsGlobalDragging] = useState(false)
+  const [dragCounter, setDragCounter] = useState(0)
+  const chatRef = useRef(null)
+
+  // Global Drag & Drop Handler
+  useEffect(() => {
+    const handleWindowDragOver = (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+
+    const handleWindowDragEnter = (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (e.dataTransfer.types.includes('Files')) {
+        setDragCounter(prev => prev + 1)
+        setIsGlobalDragging(true)
+      }
+    }
+
+    const handleWindowDragLeave = (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (e.dataTransfer.types.includes('Files')) {
+        const next = dragCounter - 1
+        setDragCounter(next)
+        if (next <= 0) setIsGlobalDragging(false)
+      }
+    }
+
+    const handleWindowDrop = (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      setIsGlobalDragging(false)
+      setDragCounter(0)
+
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        if (chatRef.current) {
+          chatRef.current.handleFiles(e.dataTransfer.files)
+        }
+      }
+    }
+
+    window.addEventListener('dragover', handleWindowDragOver)
+    window.addEventListener('dragenter', handleWindowDragEnter)
+    window.addEventListener('dragleave', handleWindowDragLeave)
+    window.addEventListener('drop', handleWindowDrop)
+
+    return () => {
+      window.removeEventListener('dragover', handleWindowDragOver)
+      window.removeEventListener('dragenter', handleWindowDragEnter)
+      window.removeEventListener('dragleave', handleWindowDragLeave)
+      window.removeEventListener('drop', handleWindowDrop)
+    }
+  }, [dragCounter])
 
   return (
     <div className="min-h-screen bg-void font-body flex flex-col">
+      {/* Global Drag Overlay */}
+      {isGlobalDragging && (
+        <div className="fixed inset-0 z-[200] bg-accent/10 backdrop-blur-xl flex flex-col items-center justify-center p-8 animate-in fade-in duration-300">
+          <div className="absolute inset-0 border-[6px] border-dashed border-accent/40 m-8 rounded-[32px] pointer-events-none" />
+          <div className="card-premium p-12 flex flex-col items-center shadow-2xl scale-110 pointer-events-none">
+            <div className="w-24 h-24 rounded-full bg-accent text-white flex items-center justify-center mb-6 shadow-[0_0_50px_rgba(59,130,246,0.6)] animate-bounce-subtle">
+              <UploadCloud size={48} />
+            </div>
+            <h2 className="font-display text-[32px] font-bold text-primary mb-2 tracking-tight text-center">Drop to Analyze Design</h2>
+            <p className="font-body text-[16px] text-secondary text-center max-w-sm">
+              Your screenshot will be analyzed by the AI Copilot to help you build faster.
+            </p>
+          </div>
+        </div>
+      )}
+
       <Navbar minimal />
       <Sidebar />
 
@@ -54,7 +126,7 @@ export default function Copilot() {
           </button>
 
           <div className="flex-1 min-h-[500px]">
-            <ChatWidget compact placeholder="Ask me anything about building your AI product…" />
+            <ChatWidget ref={chatRef} compact placeholder="Ask me anything about building your AI product…" />
           </div>
         </div>
       </main>

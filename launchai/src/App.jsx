@@ -11,6 +11,7 @@ const SettingsPage = lazy(() => import('./pages/Settings.jsx'))
 const Deploy = lazy(() => import('./pages/Deploy.jsx'))
 const InfoPage = lazy(() => import('./pages/Info.jsx'))
 const CritiquePage = lazy(() => import('./pages/CritiquePage.jsx'))
+const LiveApp = lazy(() => import('./pages/LiveApp.jsx'))
 
 // Premium loading fallback for lazy-loaded routes
 function PageLoader() {
@@ -58,6 +59,7 @@ export default function App() {
           <Route path="/terms"       element={<InfoPage />} />
           <Route path="/changelog"   element={<InfoPage />} />
           <Route path="/critique"    element={<CritiquePage />} />
+          <Route path="/p/:id"       element={<LiveApp />} />
           {/* Catch-all: Redirect to Landing, but could be used for 404 in the future */}
           <Route path="*"            element={<Navigate to="/" replace />} />
         </Routes>
