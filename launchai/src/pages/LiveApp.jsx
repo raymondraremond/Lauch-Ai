@@ -89,9 +89,9 @@ export default function LiveApp() {
         const parts = [{ text: parsedPrompt }]
         if (imagePart) parts.push(imagePart)
 
-        // Call Gemini 1.5 Flash
+        // Call Gemini 3.1 Flash
         const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash:generateContent?key=${geminiKey}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
