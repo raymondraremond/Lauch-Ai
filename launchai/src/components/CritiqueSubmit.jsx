@@ -1,4 +1,18 @@
 import React, { useState } from 'react';
+import { 
+  Sparkles, 
+  FileText, 
+  Link as LinkIcon, 
+  Type, 
+  Upload, 
+  X, 
+  Check, 
+  AlertCircle,
+  ArrowRight,
+  ShieldCheck,
+  Zap,
+  ChevronRight
+} from 'lucide-react';
 import CritiqueResult from './CritiqueResult';
 
 // ⬇️ Change to your deployed server URL in production
@@ -146,49 +160,23 @@ export default function CritiqueSubmit() {
     setErrorMsg('');
   };
 
-  const inputStyle = {
-    width: '100%',
-    padding: '12px',
-    border: '1px solid #d1d5db',
-    borderRadius: '8px',
-    fontSize: '14px',
-    marginTop: '6px',
-    fontFamily: 'system-ui, sans-serif',
-    boxSizing: 'border-box'
-  };
-
-  const labelStyle = {
-    display: 'block',
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#374151',
-    marginTop: '16px'
-  };
-
   if (screen === 'loading') {
     return (
-      <div style={{ textAlign: 'center', fontFamily: 'system-ui, sans-serif', padding: '60px 20px' }}>
-        <style>
-          {`
-            @keyframes pulse-ring {
-              0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(26, 115, 232, 0.7); }
-              70% { transform: scale(1); box-shadow: 0 0 0 20px rgba(26, 115, 232, 0); }
-              100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(26, 115, 232, 0); }
-            }
-          `}
-        </style>
-        <div style={{
-          width: '50px',
-          height: '50px',
-          borderRadius: '50%',
-          backgroundColor: tier === 'pro' ? '#1a73e8' : '#22c55e',
-          margin: '0 auto 24px auto',
-          animation: 'pulse-ring 2s infinite'
-        }}></div>
-        <h3 style={{ fontSize: '20px', fontWeight: 'bold', margin: '0 0 8px 0' }}>Gemini is reviewing your project…</h3>
-        <p style={{ color: '#6b7280', fontSize: '15px' }}>
-          {submissionType === 'text' ? 'This takes a few seconds' : submissionType === 'file' ? 'Reading and analyzing your file…' : 'Fetching and reviewing your link…'}
+      <div className="flex flex-col items-center justify-center py-20 animate-fade-up text-center">
+        <div className="companion-pulse w-16 h-16 rounded-2xl bg-accent-dim border border-accent/30 flex items-center justify-center mb-6">
+          <Sparkles size={32} className="text-accent animate-pulse" />
+        </div>
+        <h3 className="font-display text-2xl font-semibold text-primary mb-2">Gemini is reviewing your project...</h3>
+        <p className="font-body text-secondary max-w-sm">
+          {submissionType === 'text' ? 'Our AI is analyzing your project details to find key insights and risks.' : 
+           submissionType === 'file' ? 'Reading and deeply analyzing your provided documentation...' : 
+           'Crawling and reviewing your project link for feedback...'}
         </p>
+        <div className="mt-8 flex gap-2">
+          <div className="w-2 h-2 rounded-full bg-accent animate-bounce" style={{ animationDelay: '0ms' }} />
+          <div className="w-2 h-2 rounded-full bg-accent animate-bounce" style={{ animationDelay: '150ms' }} />
+          <div className="w-2 h-2 rounded-full bg-accent animate-bounce" style={{ animationDelay: '300ms' }} />
+        </div>
       </div>
     );
   }
@@ -205,300 +193,261 @@ export default function CritiqueSubmit() {
   }
 
   return (
-    <div style={{ fontFamily: 'system-ui, sans-serif', color: '#111827' }}>
-      <h1 style={{ fontSize: '28px', fontWeight: 'bold', margin: '0 0 8px 0' }}>Submit Your Project for AI Critique</h1>
-      <p style={{ fontSize: '16px', color: '#4b5563', margin: '0 0 32px 0' }}>Get honest, actionable feedback powered by Gemini 2.5 Pro</p>
+    <div className="animate-fade-up">
+      {/* Header */}
+      <div className="mb-10 text-center">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent-dim border border-accent/20 mb-4">
+          <Sparkles size={14} className="text-accent" />
+          <span className="font-mono text-[11px] tracking-[0.05em] uppercase text-accent font-medium">AI Project Audit</span>
+        </div>
+        <h1 className="font-display text-4xl font-bold text-primary tracking-tight mb-3">
+          Submit Your Project for AI Critique
+        </h1>
+        <p className="font-body text-lg text-secondary max-w-xl mx-auto leading-relaxed">
+          Get honest, actionable feedback on product-market fit, AI potential, and roadmap risks.
+        </p>
+      </div>
 
       {/* Tabs */}
-      <div style={{ 
-        display: 'flex', 
-        gap: '8px', 
-        marginBottom: '32px', 
-        backgroundColor: '#f3f4f6', 
-        padding: '6px', 
-        borderRadius: '12px' 
-      }}>
+      <div className="flex p-1 gap-1 bg-raised border border-base rounded-xl mb-8 max-w-md mx-auto">
         {[
-          { id: 'text', label: '📝 Text Form' },
-          { id: 'file', label: '📄 Upload File' },
-          { id: 'link', label: '🔗 Paste a Link' }
-        ].map(tab => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => { setSubmissionType(tab.id); setErrorMsg(''); }}
-            style={{
-              flex: 1,
-              padding: '12px 16px',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontWeight: submissionType === tab.id ? '600' : '500',
-              backgroundColor: submissionType === tab.id ? '#fff' : 'transparent',
-              border: 'none',
-              boxShadow: submissionType === tab.id ? '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' : 'none',
-              color: submissionType === tab.id ? '#1a73e8' : '#6b7280',
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              fontSize: '14px'
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
+          { id: 'text', label: 'Form', icon: Type },
+          { id: 'file', label: 'File', icon: FileText },
+          { id: 'link', label: 'Link', icon: LinkIcon }
+        ].map(tab => {
+          const Icon = tab.icon;
+          const isActive = submissionType === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => { setSubmissionType(tab.id); setErrorMsg(''); }}
+              className={`flex flex-1 items-center justify-center gap-2 py-2 px-4 rounded-lg font-body text-sm font-medium transition-all
+                ${isActive ? 'bg-accent text-white shadow-lg shadow-accent/20' : 'text-secondary hover:text-primary hover:bg-white/5'}`}
+            >
+              <Icon size={16} />
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       {errorMsg && (
-        <div style={{ 
-          padding: '16px', 
-          backgroundColor: '#fef2f2', 
-          color: '#dc2626', 
-          borderRadius: '12px', 
-          marginBottom: '32px', 
-          fontSize: '14px', 
-          fontWeight: '500', 
-          border: '1px solid #fecaca',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px'
-        }}>
-          <span style={{ fontSize: '18px' }}>⚠️</span>
+        <div className="flex items-center gap-3 p-4 bg-danger/10 border border-danger/20 rounded-xl mb-8 text-danger text-sm animate-fade-up">
+          <AlertCircle size={18} />
           {errorMsg}
         </div>
       )}
 
-      <div style={{ 
-        transition: 'opacity 0.3s ease-in-out', 
-        opacity: 1 
-      }}>
-        <form onSubmit={handleSubmit}>
-          <label style={labelStyle}>
-            Project Title
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="card border-base bg-raised/50 backdrop-blur-sm p-6 space-y-6">
+          <div className="space-y-2">
+            <label className="section-label">Project Title</label>
             <input 
               type="text" 
-              style={inputStyle} 
+              className="input" 
               placeholder="e.g. My Awesome AI App"
               value={formData.projectTitle} 
               onChange={(e) => setFormData({...formData, projectTitle: e.target.value})} 
             />
-          </label>
+          </div>
 
           {submissionType === 'text' && (
-            <div key="text-fields">
-              <label style={labelStyle}>
-                Project Description
+            <>
+              <div className="space-y-2">
+                <label className="section-label">Project Description</label>
                 <textarea 
                   rows="4" 
-                  style={inputStyle} 
+                  className="input" 
                   placeholder="What does your project do? What problem does it solve?"
                   value={formData.projectDescription} 
                   onChange={(e) => setFormData({...formData, projectDescription: e.target.value})} 
                 />
-              </label>
+              </div>
 
-              <label style={labelStyle}>
-                Target Audience
-                <input 
-                  type="text" 
-                  style={inputStyle} 
-                  placeholder="Who is this built for?"
-                  value={formData.targetAudience} 
-                  onChange={(e) => setFormData({...formData, targetAudience: e.target.value})} 
-                />
-              </label>
-
-              <label style={labelStyle}>
-                AI Features Used
-                <textarea 
-                  rows="2" 
-                  style={inputStyle} 
-                  placeholder="What AI features did you add? e.g. chatbot, image generation..."
-                  value={formData.aiFeatures} 
-                  onChange={(e) => setFormData({...formData, aiFeatures: e.target.value})} 
-                />
-              </label>
-            </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="section-label">Target Audience</label>
+                  <input 
+                    type="text" 
+                    className="input" 
+                    placeholder="Who is this built for?"
+                    value={formData.targetAudience} 
+                    onChange={(e) => setFormData({...formData, targetAudience: e.target.value})} 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="section-label">AI Features Used</label>
+                  <input 
+                    type="text" 
+                    className="input" 
+                    placeholder="e.g. LLM, Image Gen..."
+                    value={formData.aiFeatures} 
+                    onChange={(e) => setFormData({...formData, aiFeatures: e.target.value})} 
+                  />
+                </div>
+              </div>
+            </>
           )}
 
           {submissionType === 'file' && (
-            <div key="file-fields" style={{ marginTop: '24px' }}>
-              <label style={{ ...labelStyle, marginTop: 0 }}>Upload Project Details</label>
+            <div className="space-y-4">
+              <label className="section-label">Project Documentation</label>
               <div
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
                 onDragOver={handleDrag}
                 onDrop={handleDrop}
-                style={{
-                  border: `2px dashed ${dragActive ? '#1a73e8' : '#e5e7eb'}`,
-                  borderRadius: '16px',
-                  padding: '48px 24px',
-                  textAlign: 'center',
-                  marginTop: '12px',
-                  backgroundColor: dragActive ? '#f0f7ff' : '#fafafa',
-                  transition: 'all 0.2s ease',
-                  position: 'relative',
-                  cursor: 'pointer'
-                }}
+                className={`flex flex-col items-center justify-center border-2 border-dashed rounded-2xl py-12 px-6 transition-all cursor-pointer
+                  ${dragActive ? 'border-accent bg-accent-dim' : 'border-base bg-muted/30 hover:border-lit hover:bg-muted/50'}`}
+                onClick={() => document.getElementById('file-upload').click()}
               >
                 {fileData.name ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <div style={{ 
-                      width: '64px', 
-                      height: '64px', 
-                      backgroundColor: '#dcfce7', 
-                      borderRadius: '50%', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      marginBottom: '16px',
-                      fontSize: '32px'
-                    }}>
-                      📄
+                  <div className="flex flex-col items-center text-center">
+                    <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mb-4 border border-success/20">
+                      <ShieldCheck size={32} className="text-success" />
                     </div>
-                    <div style={{ color: '#15803d', fontWeight: '600', fontSize: '16px' }}>
-                      {fileData.name}
-                    </div>
+                    <p className="font-body font-medium text-primary text-lg mb-1">{fileData.name}</p>
+                    <p className="font-mono text-xs text-success uppercase tracking-widest">Ready for analysis</p>
                     <button 
                       type="button" 
-                      onClick={() => setFileData({ name: '', content: '', type: '' })}
-                      style={{ 
-                        marginTop: '16px', 
-                        color: '#ef4444', 
-                        background: 'none', 
-                        border: 'none', 
-                        cursor: 'pointer', 
-                        fontSize: '14px', 
-                        fontWeight: '500' 
-                      }}
+                      onClick={(e) => { e.stopPropagation(); setFileData({ name: '', content: '', type: '' }); }}
+                      className="mt-6 flex items-center gap-2 text-sm text-text-muted hover:text-danger transition-colors font-medium"
                     >
+                      <X size={14} />
                       Remove File
                     </button>
                   </div>
                 ) : (
                   <>
-                    <div style={{ fontSize: '40px', marginBottom: '16px' }}>☁️</div>
-                    <p style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: '600', color: '#1f2937' }}>Drag & drop your file here</p>
-                    <p style={{ margin: '0 0 24px 0', fontSize: '14px', color: '#6b7280' }}>Supports PDF, TXT, MD (Max 5MB)</p>
-                    <label htmlFor="file-upload" style={{
-                      display: 'inline-block',
-                      padding: '10px 24px',
-                      backgroundColor: '#fff',
-                      color: '#374151',
-                      borderRadius: '8px',
-                      border: '1px solid #d1d5db',
-                      cursor: 'pointer',
-                      fontWeight: '600',
-                      fontSize: '14px',
-                      boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                    }}>
+                    <div className="w-16 h-16 rounded-full bg-accent-dim flex items-center justify-center mb-5 border border-accent/20">
+                      <Upload size={28} className="text-accent" />
+                    </div>
+                    <p className="font-body font-semibold text-primary text-xl mb-2">Drag & drop your file here</p>
+                    <p className="font-body text-secondary text-sm mb-6 text-center max-w-xs">
+                      Supports PDF, TXT, or Markdown documentation (Max 5MB)
+                    </p>
+                    <div className="px-6 py-2.5 bg-raised border border-base rounded-lg text-sm font-medium text-primary hover:border-lit transition-all shadow-sm">
                       Select File
-                    </label>
-                    <input 
-                      id="file-upload" 
-                      type="file" 
-                      accept=".pdf,.txt,.md" 
-                      style={{ display: 'none' }} 
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          processFile(e.target.files[0]);
-                        }
-                      }} 
-                    />
+                    </div>
                   </>
                 )}
+                <input 
+                  id="file-upload" 
+                  type="file" 
+                  accept=".pdf,.txt,.md" 
+                  className="hidden" 
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      processFile(e.target.files[0]);
+                    }
+                  }} 
+                />
               </div>
             </div>
           )}
 
           {submissionType === 'link' && (
-            <div key="link-fields">
-              <label style={labelStyle}>
-                URL
-                <input 
-                  type="text" 
-                  style={inputStyle} 
-                  placeholder="https://your-project-link.com"
-                  value={formData.url} 
-                  onChange={(e) => setFormData({...formData, url: e.target.value})} 
-                />
-              </label>
+            <>
+              <div className="space-y-2">
+                <label className="section-label">Link</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-text-muted">
+                    <LinkIcon size={16} />
+                  </div>
+                  <input 
+                    type="text" 
+                    className="input pl-10" 
+                    placeholder="https://your-project-link.com"
+                    value={formData.url} 
+                    onChange={(e) => setFormData({...formData, url: e.target.value})} 
+                  />
+                </div>
+              </div>
 
-              <label style={labelStyle}>
-                Additional context (optional)
+              <div className="space-y-2">
+                <label className="section-label">Focus Areas (optional)</label>
                 <textarea 
-                  rows="4" 
-                  style={inputStyle} 
-                  placeholder="Anything you want the AI to focus on when reviewing the link? e.g. 'Focus on my conversion funnel'"
+                  rows="3" 
+                  className="input" 
+                  placeholder="Anything specific you want the AI to focus on? e.g. 'Conversion funnel' or 'AI accuracy'"
                   value={formData.additionalContext} 
                   onChange={(e) => setFormData({...formData, additionalContext: e.target.value})} 
                 />
-              </label>
-            </div>
+              </div>
+            </>
           )}
+        </div>
 
-        <div style={{ display: 'flex', gap: '16px', marginTop: '32px', marginBottom: '32px' }}>
-          {/* FREE CARD */}
+        {/* Tier Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div 
             onClick={() => setTier('free')}
-            style={{
-              flex: 1,
-              border: `2px solid ${tier === 'free' ? '#22c55e' : '#e5e7eb'}`,
-              borderRadius: '12px',
-              padding: '20px',
-              cursor: 'pointer',
-              backgroundColor: tier === 'free' ? '#f0fdf4' : '#ffffff',
-              transition: 'all 0.2s ease'
-            }}
+            className={`card-premium cursor-pointer transition-all duration-300 group
+              ${tier === 'free' ? 'border-success/50 ring-1 ring-success/20 shadow-[0_0_20px_rgba(52,211,153,0.05)]' : 'border-base opacity-70 hover:opacity-100 hover:border-lit'}`}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <h4 style={{ margin: '0', fontSize: '16px', fontWeight: 'bold' }}>Free Critique</h4>
-              <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#374151' }}>Free</span>
+            <div className="flex justify-between items-start mb-4">
+              <div className={`p-2 rounded-lg ${tier === 'free' ? 'bg-success/20 text-success' : 'bg-muted text-text-muted'}`}>
+                <ShieldCheck size={20} />
+              </div>
+              <span className={`font-display text-lg font-bold ${tier === 'free' ? 'text-success' : 'text-primary'}`}>Free</span>
             </div>
-            <p style={{ margin: '0', fontSize: '13px', color: '#4b5563', lineHeight: '1.5' }}>
-              3 key insights — Strongest point, Biggest risk, Top suggestion
+            <h4 className="font-display font-semibold text-primary mb-1">Standard Audit</h4>
+            <p className="font-body text-xs text-secondary leading-relaxed mb-4">
+              3 key insights including strongest points and critical risks.
             </p>
+            <div className={`flex items-center gap-2 text-[10px] uppercase tracking-widest font-bold 
+              ${tier === 'free' ? 'text-success' : 'text-text-muted'}`}>
+              <Check size={12} /> Unlimited Access
+            </div>
           </div>
 
-          {/* PRO CARD */}
           <div 
             onClick={() => setTier('pro')}
-            style={{
-              flex: 1,
-              border: `2px solid ${tier === 'pro' ? '#1a73e8' : '#e5e7eb'}`,
-              borderRadius: '12px',
-              padding: '20px',
-              cursor: 'pointer',
-              backgroundColor: tier === 'pro' ? '#eff6ff' : '#ffffff',
-              transition: 'all 0.2s ease'
-            }}
+            className={`card-premium cursor-pointer transition-all duration-300 relative group
+              ${tier === 'pro' ? 'border-accent ring-1 ring-accent/20 shadow-[0_0_20px_rgba(99,102,241,0.1)]' : 'border-base opacity-70 hover:opacity-100 hover:border-lit'}`}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <h4 style={{ margin: '0', fontSize: '16px', fontWeight: 'bold' }}>Pro Critique ⭐</h4>
-              <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#374151' }}>$9 one-time</span>
+            {/* Recommended Badge */}
+            <div className="absolute -top-3 right-4 px-3 py-1 bg-accent rounded-full shadow-lg shadow-accent/20 flex items-center gap-1.5 z-10 border border-white/10">
+              <Zap size={10} className="text-white fill-white" />
+              <span className="font-mono text-[9px] text-white font-bold uppercase tracking-widest">Recommended</span>
             </div>
-            <p style={{ margin: '0', fontSize: '13px', color: '#4b5563', lineHeight: '1.5' }}>
-              Full breakdown — Market fit, AI analysis, Competitor landscape, Roadmap
+
+            <div className="flex justify-between items-start mb-4">
+              <div className={`p-2 rounded-lg ${tier === 'pro' ? 'bg-accent/20 text-accent' : 'bg-muted text-text-muted'}`}>
+                <Sparkles size={20} />
+              </div>
+              <span className={`font-display text-lg font-bold ${tier === 'pro' ? 'text-accent' : 'text-primary'}`}>$9</span>
+            </div>
+            <h4 className="font-display font-semibold text-primary mb-1">Pro Performance Audit</h4>
+            <p className="font-body text-xs text-secondary leading-relaxed mb-4">
+              Full breakdown including Market Fit, Competitive Edge, and Roadmap.
             </p>
+            <div className={`flex items-center gap-2 text-[10px] uppercase tracking-widest font-bold 
+              ${tier === 'pro' ? 'text-accent' : 'text-text-muted'}`}>
+              <Check size={12} /> Deep Intelligence
+            </div>
           </div>
         </div>
 
         <button 
           type="submit" 
-          style={{
-            width: '100%',
-            padding: '16px',
-            backgroundColor: tier === 'free' ? '#22c55e' : '#1a73e8',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            transition: 'background-color 0.2s'
-          }}
+          className={`btn-primary w-full py-4 text-base font-bold shadow-xl transition-all group overflow-hidden relative
+            ${tier === 'free' ? '!bg-emerald-500 hover:!bg-emerald-400' : ''}`}
         >
-          {submissionType === 'file' ? 'Critique My File →' : submissionType === 'link' ? 'Critique This Link →' : tier === 'free' ? 'Get Free Critique →' : 'Get Pro Critique →'}
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+          <span className="relative flex items-center justify-center gap-2">
+            {submissionType === 'file' ? 'Analyze My Documentation' : 
+             submissionType === 'link' ? 'Audit This Project Link' : 
+             tier === 'free' ? 'Generate Free Critique' : 'Unlock Pro Audit Intelligence'}
+            <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+          </span>
         </button>
+        
+        <p className="text-center text-[11px] text-text-muted uppercase tracking-[0.15em] font-medium">
+          Powered by Gemini 1.5 Pro · Context-Aware Analysis
+        </p>
       </form>
-      </div>
     </div>
   );
 }
