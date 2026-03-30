@@ -448,7 +448,7 @@ export default function CritiqueSubmit() {
         </button>
         
         <p className="text-center text-[11px] text-text-muted uppercase tracking-[0.15em] font-medium">
-          Powered by Gemini 3.0 Pro · Context-Aware Analysis
+          Powered by Gemini 3.1 Flash · Optimized Performance
         </p>
       </form>
     </div>
