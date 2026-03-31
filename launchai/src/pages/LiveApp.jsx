@@ -1,12 +1,4 @@
-import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { getProjectById } from '../lib/ProjectStore.js'
-import { 
-  Zap, Cloud, Activity, FileText, Send, 
-  MessageSquare, ChevronRight, ArrowLeft, Loader2,
-  BarChart3, ChevronDown, Sparkles, UploadCloud, Check
-} from 'lucide-react'
-import { callGeminiWithRotation } from '../lib/ApiKeyManager.js'
+import { callAI, getUserCredits } from '../lib/AIClient.js'
 
 export default function LiveApp() {
   const { id } = useParams()
@@ -19,6 +11,11 @@ export default function LiveApp() {
   const [values, setValues] = useState({})
   const [outputs, setOutputs] = useState({})
   const [isProcessing, setIsProcessing] = useState(false)
+  const [credits, setCredits] = useState(null)
+
+  useEffect(() => {
+    getUserCredits().then(setCredits)
+  }, [])
 
   useEffect(() => {
     async function loadProject() {
@@ -93,35 +90,18 @@ export default function LiveApp() {
           }
         })
 
-        const parts = [{ text: parsedPrompt }]
-        if (imagePart) parts.push(imagePart)
-
-        // Call Gemini 3.1 Flash
-        // Call Gemini with rotation
-        const data = await callGeminiWithRotation(async (apiKey) => {
-          const res = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{ role: 'user', parts: parts }],
-                generationConfig: { maxOutputTokens: 1000, temperature: 0.7 },
-              }),
-            }
-          )
-          
-          if (!res.ok) {
-            const errBody = await res.text()
-            throw new Error(`Gemini API error: ${res.status} — ${errBody}`)
-          }
-          
-          return await res.json()
+        // Call Backend AI
+        const data = await callAI({
+          parts,
+          model: 'gemini-2.5-flash'
         })
 
-        if (data.error) throw new Error(data.error.message)
+        if (data.error) throw new Error(data.error)
         const result = data.candidates?.[0]?.content?.parts?.[0]?.text
-        if (result) newOutputs[block.id] = result
+        if (result) {
+          newOutputs[block.id] = result
+          if (data.remainingCredits !== undefined) setCredits(data.remainingCredits)
+        }
       }
 
       setOutputs(newOutputs)
@@ -165,7 +145,10 @@ export default function LiveApp() {
             <ArrowLeft size={14} /> My Dashboard
           </button>
           <div className="h-4 w-[1px] bg-white/10" />
-          <span className="font-mono text-[10px] tracking-widest uppercase text-text-muted">ID: {id.slice(-6)}</span>
+          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 border border-accent/20">
+             <Zap size={12} className="text-accent" fill="currentColor" />
+             <span className="font-mono text-[11px] font-bold text-accent uppercase tracking-wider">{credits !== null ? `${credits} CR` : '--'}</span>
+          </div>
         </div>
       </header>
 

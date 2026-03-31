@@ -55,15 +55,123 @@ const server = http.createServer(async (req, res) => {
     });
   };
 
-  if (req.method === 'POST' && req.url === '/api/chat') {
+  // --- User Credit & Profile Helper ---
+  const handleUserCredits = async (userId, amount = -1) => {
+    const supabaseUrl = process.env.VITE_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!supabaseUrl || !supabaseKey) return { error: 'Environment unconfigured' };
+
+    // Fetch credits
+    const getRes = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}&select=credits`, {
+      headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
+    });
+    const profiles = await getRes.json();
+    const userCredits = profiles?.[0]?.credits ?? 0;
+
+    if (amount < 0 && userCredits < Math.abs(amount)) {
+      return { error: 'Insufficient credits', credits: userCredits };
+    }
+
+    // Update credits
+    const upRes = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`, {
+      method: 'PATCH',
+      headers: { 
+        'Content-Type': 'application/json',
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify({ credits: userCredits + amount })
+    });
+    const updated = await upRes.json();
+    return { success: true, credits: updated?.[0]?.credits };
+  };
+
+  // --- Auth Middleware Helper ---
+  const getUserIdFromToken = async (token) => {
+    const supabaseUrl = process.env.VITE_SUPABASE_URL;
+    const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
+    if (!token) return null;
+    const res = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: { 'apikey': supabaseKey, 'Authorization': token }
+    });
+    const user = await res.json();
+    return user?.id || null;
+  };
+
+  if (req.method === 'GET' && req.url === '/api/user/credits') {
     setCorsHeaders(res);
+    const userId = await getUserIdFromToken(req.headers.authorization);
+    if (!userId) {
+      res.writeHead(401); res.end(JSON.stringify({ error: 'Unauthorized' }));
+      return;
+    }
+    const result = await handleUserCredits(userId, 0);
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ message: 'Dummy chat endpoint' }));
+    res.end(JSON.stringify({ credits: result.credits || 0 }));
+    return;
+  }
+
+  if (req.method === 'POST' && req.url === '/api/generate') {
+    setCorsHeaders(res);
+    const userId = await getUserIdFromToken(req.headers.authorization);
+    if (!userId) {
+      res.writeHead(401); res.end(JSON.stringify({ error: 'Unauthorized' }));
+      return;
+    }
+
+    const { prompt, parts, model = 'gemini-2.5-flash' } = await getBody();
+    
+    // Check & Decrement Credit
+    const creditCheck = await handleUserCredits(userId, -1);
+    if (creditCheck.error) {
+      res.writeHead(402); res.end(JSON.stringify({ error: 'Insufficient credits (NGN top-up required)', credits: creditCheck.credits }));
+      return;
+    }
+
+    try {
+      const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: parts || [{ text: prompt }] }] })
+      });
+      const data = await geminiRes.json();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ...data, remainingCredits: creditCheck.credits }));
+    } catch (err) {
+      console.error('[AI Proxy] Error:', err);
+      res.writeHead(500); res.end(JSON.stringify({ error: 'AI Generation Failed' }));
+    }
+    return;
+  }
+
+  // Paystack Webhook Placeholder
+  if (req.method === 'POST' && req.url === '/api/paystack/webhook') {
+    setCorsHeaders(res);
+    console.log('[Paystack Webhook] Received event (NGN Transition Ready)');
+    res.writeHead(200); res.end(JSON.stringify({ status: 'ok' }));
     return;
   }
 
   if (req.method === 'POST' && req.url === '/api/critique') {
     setCorsHeaders(res);
+    const userId = await getUserIdFromToken(req.headers.authorization);
+    if (!userId) {
+      res.writeHead(401); res.end(JSON.stringify({ error: 'Unauthorized' }));
+      return;
+    }
+
+    const body = await getBody();
+    const { tier } = body;
+
+    // Check & Decrement Credit (Pro audits cost 3, free cost 1)
+    const cost = tier === 'pro' ? 3 : 1;
+    const creditCheck = await handleUserCredits(userId, -cost);
+    if (creditCheck.error) {
+      res.writeHead(402); res.end(JSON.stringify({ error: `Insufficient credits for ${tier} audit (NGN top-up required)`, credits: creditCheck.credits }));
+      return;
+    }
+
     try {
       const body = await getBody();
       const { submissionType, projectTitle, projectDescription, targetAudience, aiFeatures, fileContent, fileType, url, additionalContext, tier } = body;
@@ -143,6 +251,7 @@ const server = http.createServer(async (req, res) => {
               'Prefer': 'return=minimal'
             },
             body: JSON.stringify({
+              user_id: userId,
               project_title: projectTitle || 'Untitled',
               project_description: projectDescription || '',
               submission_type: submissionType || 'manual',
@@ -157,9 +266,8 @@ const server = http.createServer(async (req, res) => {
         }
       }
       // ----------------------------
-
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ critique, tier, projectTitle }));
+      res.end(JSON.stringify({ critique, tier, projectTitle, remainingCredits: creditCheck.credits }));
     } catch (err) {
       console.error(err);
       res.writeHead(500, { 'Content-Type': 'application/json' });

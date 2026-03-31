@@ -1,21 +1,23 @@
-import { useState, useEffect } from 'react'
-import Navbar from '../components/Navbar.jsx'
-import Sidebar from '../components/Sidebar.jsx'
-import { Key, Shield, Info, CheckCircle, XCircle, Trash2, ArrowRight, Plus, X } from 'lucide-react'
 import { getGeminiKeys, saveGeminiKeys } from '../lib/ApiKeyManager.js'
+import { getUserCredits } from '../lib/AIClient.js'
+import { useAuth } from '../contexts/AuthContext'
+import { Sparkles, CreditCard, ChevronRight, Zap } from 'lucide-react'
 
 export default function SettingsPage() {
   const [geminiKeys, setGeminiKeys] = useState([])
   const [newGeminiKey, setNewGeminiKey] = useState('')
   const [anthropicKey, setAnthropicKey] = useState('')
   const [saved, setSaved] = useState(false)
+  const [credits, setCredits] = useState(null)
+  const { profile } = useAuth()
   
-  // Load existing keys from localStorage on mount
+  // Load existing keys and credits
   useEffect(() => {
     const gKeys = getGeminiKeys()
     const aKey = localStorage.getItem('VITE_ANTHROPIC_API_KEY') || ''
     setGeminiKeys(gKeys)
     setAnthropicKey(aKey)
+    getUserCredits().then(setCredits)
   }, [])
 
   function addGeminiKey() {
@@ -61,11 +63,60 @@ export default function SettingsPage() {
           <div className="mb-[32px]">
             <h1 className="font-display text-[28px] font-semibold text-primary mb-1 tracking-[-0.03em]">Settings</h1>
             <p className="font-body text-[14px] text-secondary">
-              Configure your AI API keys to move from demo mode to live AI.
+              Manage your AI infrastructure, credits, and security.
             </p>
           </div>
-
+          
           <div className="space-y-6">
+            {/* Credits & Billing Card */}
+            <div className="companion-card overflow-hidden animate-fade-up">
+              <div className="p-6 bg-gradient-to-br from-accent/5 to-transparent">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-[36px] h-[36px] rounded-[10px] bg-accent/10 border border-accent/20 flex justify-center items-center">
+                      <CreditCard size={18} className="text-accent" />
+                    </div>
+                    <div>
+                      <h2 className="font-display text-[17px] font-semibold text-primary">Credits & Billing</h2>
+                      <p className="text-[12px] text-secondary opacity-70 uppercase tracking-widest font-mono mt-0.5">Paystack Gateway • NGN</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <span className="text-[10px] font-mono text-text-muted uppercase tracking-widest mb-1">Available Credits</span>
+                    <div className="flex items-center gap-2 px-4 py-2 bg-void/50 border border-glow rounded-xl">
+                      <Zap size={14} className="text-accent" fill="currentColor" />
+                      <span className="font-display text-xl font-bold text-primary">{credits !== null ? credits : '--'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <button className="flex items-center justify-between p-4 rounded-xl bg-white/[0.03] border border-white/5 hover:border-accent/40 transition-all text-left">
+                    <div>
+                      <p className="text-xs font-mono text-text-muted uppercase tracking-wider mb-1">Standard Pack</p>
+                      <p className="font-display font-bold text-primary">50 Credits</p>
+                      <p className="text-[13px] text-accent font-medium">₦2,500.00</p>
+                    </div>
+                    <ChevronRight size={18} className="text-secondary opacity-30" />
+                  </button>
+                  <button className="flex items-center justify-between p-4 rounded-xl bg-accent text-white hover:scale-[1.02] active:scale-[0.98] transition-all text-left shadow-lg shadow-accent/20">
+                    <div>
+                      <p className="text-xs font-mono text-white/60 uppercase tracking-wider mb-1">Power Pack</p>
+                      <p className="font-display font-bold text-white">200 Credits</p>
+                      <p className="text-[13px] font-medium text-white/90">₦7,500.00</p>
+                    </div>
+                    <Zap size={18} fill="currentColor" />
+                  </button>
+                </div>
+              </div>
+              <div className="px-6 py-4 bg-void/30 border-t border-white/5 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-[12px] text-secondary">
+                  <Sparkles size={12} className="text-accent" />
+                  <span>Credits are used for AI Audit & Copilot actions.</span>
+                </div>
+                <button className="text-[11px] font-mono text-accent uppercase tracking-widest font-bold hover:underline">View History</button>
+              </div>
+            </div>
             {/* Guide Card */}
             <div className="companion-card p-4 border-accent/20 bg-accent/[0.04] flex items-start gap-4 animate-fade-up">
               <div className="w-[32px] h-[32px] rounded-[8px] bg-accent-dim border border-glow flex items-center justify-center flex-shrink-0">
@@ -203,8 +254,8 @@ export default function SettingsPage() {
                 <Shield size={16} className="text-secondary" />
               </div>
               <div className="flex-1 text-[12px] text-text-muted leading-[1.6]">
-                <strong className="text-secondary block mb-0.5">Privacy First</strong>
-                Your keys are stored only in your browser's local storage. They never touch our servers. Refresh the page after saving to apply changes.
+                <strong className="text-secondary block mb-0.5">Secure AI Infrastructure</strong>
+                To protect your wallet and prevent API leaks, all AI generations are now proxied through our secure backend. Refresh the page after saving to apply changes.
               </div>
             </div>
           </div>

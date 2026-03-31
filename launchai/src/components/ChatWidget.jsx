@@ -1,5 +1,5 @@
-import { Send, Bot, User, Loader, X, Sparkles, Image as ImageIcon, UploadCloud } from 'lucide-react'
-import { callGeminiWithRotation, getGeminiKeys } from '../lib/ApiKeyManager.js'
+import { forwardRef, useState, useEffect, useImperativeHandle, useRef, useCallback } from 'react'
+import { callAI, getUserCredits } from '../lib/AIClient.js'
 
 const SYSTEM_PROMPT = `You are the LaunchAI Copilot, a world-class AI developer.
 Your goal is to help users build sophisticated AI applications by adding components to their canvas.
@@ -67,94 +67,41 @@ const ChatWidget = forwardRef(({ placeholder = "Ask your AI copilot anything…"
       setLoading(false)
     }
 
-    const anthropicKey = localStorage.getItem('VITE_ANTHROPIC_API_KEY') || import.meta.env.VITE_ANTHROPIC_API_KEY
-    const geminiKeys   = getGeminiKeys()
-
-    if (geminiKeys.length > 0 || import.meta.env.VITE_GOOGLE_API_KEY) {
-      try {
-        const geminiHistory = updated[0].role === 'assistant' ? updated.slice(1) : updated
-        const parts = [{ text: text }]
-        if (uploadedImage) {
-          parts.push({
-            inline_data: {
-              mime_type: imageType,
-              data: uploadedImage.split(',')[1]
-            }
-          })
+    const geminiHistory = updated[0].role === 'assistant' ? updated.slice(1) : updated
+    const parts = [{ text: text }]
+    if (uploadedImage) {
+      parts.push({
+        inline_data: {
+          mime_type: imageType,
+          data: uploadedImage.split(',')[1]
         }
-
-        const reply = await callGeminiWithRotation(async (apiKey) => {
-          const res = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-                contents: [
-                  ...geminiHistory.slice(0, -1).map(m => ({
-                    role: m.role === 'assistant' ? 'model' : 'user',
-                    parts: [{ text: m.content }]
-                  })),
-                  { role: 'user', parts: parts }
-                ],
-                generationConfig: { maxOutputTokens: 800, temperature: 0.7 },
-              }),
-            }
-          )
-          
-          if (!res.ok) {
-            const errBody = await res.text()
-            throw new Error(`Gemini API error: ${res.status} — ${errBody}`)
-          }
-          
-          const data = await res.json()
-          return data.candidates?.[0]?.content?.parts?.[0]?.text
-        })
-
-        if (reply) {
-          setUploadedImage(null)
-          setImageType(null)
-          processReply(reply, 'Gemini')
-          return
-        }
-      } catch (err) { 
-        console.error('Gemini rotation failed:', err)
-        // If it's a real failure after trying all keys, show it
-        if (!err.message.includes('No Gemini API keys')) {
-          setMessages(prev => [...prev, { role: 'assistant', content: `⚠️ Gemini Error: ${err.message}`, provider: 'Error' }])
-          setLoading(false)
-          return
-        }
-      }
+      })
     }
 
-    if (anthropicKey) {
-      try {
-        const res = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': anthropicKey,
-            'anthropic-version': '2023-06-01',
-            'anthropic-dangerous-direct-browser-access': 'true',
-          },
-          body: JSON.stringify({
-            model: 'claude-3-5-sonnet-20240620',
-            max_tokens: 800,
-            system: SYSTEM_PROMPT,
-            messages: updated.map(m => ({ role: m.role, content: m.content })),
-          }),
-        })
-        const data = await res.json()
-        const reply = data.content?.[0]?.text
-        if (reply) {
-          processReply(reply, 'Claude')
-          return
-        }
-      } catch (err) {
-        console.error('Anthropic failed:', err)
+    try {
+      const data = await callAI({
+        parts: [
+          { text: SYSTEM_PROMPT },
+          ...geminiHistory.slice(0, -1).map(m => ({
+            text: `${m.role === 'assistant' ? 'Copilot' : 'User'}: ${m.content}`
+          })),
+          ...parts
+        ],
+        model: 'gemini-2.5-flash'
+      })
+
+      const reply = data.candidates?.[0]?.content?.parts?.[0]?.text
+      if (reply) {
+        setUploadedImage(null)
+        setImageType(null)
+        processReply(reply, 'LaunchAI Proxy')
+        return
       }
+    } catch (err) {
+      console.error('AI Proxy failed:', err)
+      setMessages(prev => [...prev, { role: 'assistant', content: `⚠️ Error: ${err.message}`, provider: 'Error' }])
+      setLoading(false)
+      return
     }
 
     await new Promise(r => setTimeout(r, 800))
@@ -291,7 +238,7 @@ const ChatWidget = forwardRef(({ placeholder = "Ask your AI copilot anything…"
           </button>
         </form>
         <p className="mt-3 font-mono text-[9px] tracking-[0.1em] text-text-muted text-center uppercase opacity-50">
-          {isLive ? 'AI Active (Live Mode)' : 'Demo Mode — add a key in Settings for live AI'}
+          Secure Proxy Active • Credits Tracked via Supabase
         </p>
       </div>
     </div>

@@ -1,22 +1,8 @@
-import React, { useState } from 'react';
-import { 
-  Sparkles, 
-  FileText, 
-  Link as LinkIcon, 
-  Type, 
-  Upload, 
-  X, 
-  Check, 
-  AlertCircle,
-  ArrowRight,
-  ShieldCheck,
-  Zap,
-  ChevronRight
-} from 'lucide-react';
-import CritiqueResult from './CritiqueResult';
+import { supabase } from '../lib/supabaseClient';
+import { getUserCredits } from '../lib/AIClient.js';
 
 // ⬇️ Change to your deployed server URL in production
-const API_BASE = "http://localhost:4000";
+const API_BASE = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
 
 export default function CritiqueSubmit() {
   const [screen, setScreen] = useState('form');
@@ -34,6 +20,11 @@ export default function CritiqueSubmit() {
   });
   const [errorMsg, setErrorMsg] = useState('');
   const [resultData, setResultData] = useState(null);
+  const [credits, setCredits] = useState(null);
+
+  React.useEffect(() => {
+    getUserCredits().then(setCredits);
+  }, []);
 
   const handleDrag = function(e) {
     e.preventDefault();
@@ -120,19 +111,33 @@ export default function CritiqueSubmit() {
         bodyData = { submissionType: 'link', projectTitle: formData.projectTitle, url: formData.url, additionalContext: formData.additionalContext, tier };
       }
 
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      if (!token) {
+        throw new Error('Authentication required. Please sign in.');
+      }
+
       const res = await fetch(`${API_BASE}/api/critique`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(bodyData)
       });
 
       const data = await res.json();
 
+      if (res.status === 402) {
+        throw new Error(data.error || 'Insufficient credits (NGN top-up required)');
+      }
+
       if (!res.ok || data.error) {
         throw new Error(data.error || 'Server error occurred');
       }
+
+      if (data.remainingCredits !== undefined) setCredits(data.remainingCredits);
 
       setResultData({
         critique: data.critique,
@@ -206,9 +211,16 @@ export default function CritiqueSubmit() {
         <h1 className="font-display text-4xl font-bold text-primary tracking-tight mb-3">
           Submit Your Project for AI Critique
         </h1>
-        <p className="font-body text-lg text-secondary max-w-xl mx-auto leading-relaxed">
+        <p className="font-body text-lg text-secondary max-w-xl mx-auto leading-relaxed mb-6">
           Get honest, actionable feedback on product-market fit, AI potential, and roadmap risks.
         </p>
+
+        <div className="inline-flex items-center gap-3 px-4 py-2 rounded-xl bg-void/50 border border-glow mx-auto">
+          <Zap size={14} className="text-accent" fill="currentColor" />
+          <span className="font-mono text-sm font-bold text-primary">{credits !== null ? `${credits} CR` : 'Loading...'}</span>
+          <div className="h-4 w-[1px] bg-white/10 mx-1" />
+          <span className="font-mono text-[10px] text-text-muted uppercase tracking-widest">{tier === 'pro' ? 'Cost: 3' : 'Cost: 1'}</span>
+        </div>
       </div>
 
       {/* Tabs */}

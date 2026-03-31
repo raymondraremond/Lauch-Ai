@@ -64,6 +64,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   full_name TEXT,
   avatar_url TEXT,
   onboarding_complete BOOLEAN DEFAULT false,
+  credits INTEGER DEFAULT 10,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -95,4 +96,28 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE handle_new_user();
+
+-- 9. Create Critiques Table
+CREATE TABLE IF NOT EXISTS critiques (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  project_title TEXT,
+  project_description TEXT,
+  submission_type TEXT,
+  critique_text TEXT,
+  tier TEXT,
+  score INTEGER,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 10. Enable RLS on Critiques
+ALTER TABLE critiques ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their own critiques"
+  ON critiques FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own critiques"
+  ON critiques FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
 
