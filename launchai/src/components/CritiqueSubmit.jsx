@@ -2,7 +2,7 @@ import { supabase } from '../lib/supabaseClient';
 import { getUserCredits } from '../lib/AIClient.js';
 
 // ⬇️ Change to your deployed server URL in production
-const API_BASE = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
+const API_BASE = "/api";
 
 export default function CritiqueSubmit() {
   const [screen, setScreen] = useState('form');
