@@ -1,13 +1,11 @@
 /**
  * ProjectStore.js
- * Manages project persistence in localStorage for LaunchAI.
+ * Manages project persistence in Supabase for LaunchAI.
  */
-
-const STORAGE_KEY = 'launchai_projects'
+import { supabase } from './supabaseClient'
 
 const DEMO_PROJECTS = [
   {
-    id: 1,
     name: 'Invoice Analyzer',
     desc: 'Extract & categorize invoice data using AI',
     status: 'live',
@@ -21,7 +19,6 @@ const DEMO_PROJECTS = [
     ]
   },
   {
-    id: 2,
     name: 'Customer FAQ Bot',
     desc: 'AI support chatbot trained on your docs',
     status: 'draft',
@@ -36,70 +33,100 @@ const DEMO_PROJECTS = [
 ]
 
 /**
- * Initialize the store with demo data if empty.
+ * Get projects for the current authenticated user.
  */
-function init() {
-  const existing = localStorage.getItem(STORAGE_KEY)
-  if (!existing) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(DEMO_PROJECTS))
-  }
-}
+export async function getProjects() {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
 
-/**
- * Get all projects.
- */
-export function getProjects() {
-  init()
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []
-  } catch (e) {
-    console.error('Failed to parse projects:', e)
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching projects:', error)
     return []
   }
+
+  return data
 }
 
 /**
- * Get a single project by ID.
+ * Get a single project by ID, ensuring it belongs to the current user.
  */
-export function getProjectById(id) {
-  const projects = getProjects()
-  return projects.find(p => p.id === parseInt(id)) || null
+export async function getProjectById(id) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .single()
+
+  if (error) {
+    console.error(`Error fetching project ${id}:`, error)
+    return null
+  }
+
+  return data
 }
 
 /**
- * Save or update a project.
+ * Save or update a project for the current authenticated user.
  */
-export function saveProject(project) {
-  const projects = getProjects()
-  const idx = projects.findIndex(p => p.id === project.id)
-  
+export async function saveProject(project) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Authentication required to save projects.')
+
   const updatedProject = {
     ...project,
-    updated: 'Just now',
+    user_id: user.id,
+    updated_at: new Date().toISOString(),
     calls: project.calls || 0,
     tag: project.tag || 'AI App'
   }
 
-  if (idx > -1) {
-    projects[idx] = updatedProject
-  } else {
-    // New project
-    updatedProject.id = Number(Date.now().toString() + Math.floor(Math.random() * 1000).toString().padStart(3, '0'))
-    projects.push(updatedProject)
+  // If id is null, remove it so Supabase generates a UUID
+  if (!updatedProject.id) delete updatedProject.id
+
+
+  const { data, error } = await supabase
+    .from('projects')
+    .upsert(updatedProject)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error saving project:', error)
+    throw error
   }
 
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(projects))
-  return updatedProject
+  return data
 }
 
 /**
- * Delete a project.
+ * Delete a project, ensuring user ownership.
  */
-export function deleteProject(id) {
-  const projects = getProjects()
-  const filtered = projects.filter(p => p.id !== parseInt(id))
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered))
-  return filtered
+export async function deleteProject(id) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Authentication required.')
+
+  const { error } = await supabase
+    .from('projects')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', user.id)
+
+  if (error) {
+    console.error('Error deleting project:', error)
+    throw error
+  }
+
+  return true
 }
 
 /**

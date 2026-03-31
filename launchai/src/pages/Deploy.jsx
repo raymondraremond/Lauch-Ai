@@ -16,16 +16,30 @@ export default function Deploy() {
 
   useEffect(() => {
     if (id) {
-      const p = getProjectById(id)
-      if (p) {
-        setProject(p)
-        // Simulate a real deployment delay then update status
-        const timer = setTimeout(() => {
-          saveProject({ ...p, status: 'live' })
+      async function deployFlow() {
+        try {
+          const p = await getProjectById(id)
+          if (p) {
+            setProject(p)
+            // Simulate a real deployment delay then update status
+            setTimeout(async () => {
+              try {
+                await saveProject({ ...p, status: 'live' })
+                setIsDeploying(false)
+              } catch (err) {
+                console.error('Failed to update project status:', err)
+                setIsDeploying(false)
+              }
+            }, 2500)
+          } else {
+            setIsDeploying(false)
+          }
+        } catch (err) {
+          console.error('Failed to fetch project:', err)
           setIsDeploying(false)
-        }, 2500)
-        return () => clearTimeout(timer)
+        }
       }
+      deployFlow()
     } else {
       setIsDeploying(false)
     }

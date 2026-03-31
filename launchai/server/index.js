@@ -128,6 +128,36 @@ const server = http.createServer(async (req, res) => {
 
       const critique = data.candidates?.[0]?.content?.parts?.[0]?.text || "No critique returned.";
 
+      // --- SUPABASE PERSISTENCE ---
+      const supabaseUrl = process.env.VITE_SUPABASE_URL;
+      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+      if (supabaseUrl && supabaseKey) {
+        try {
+          await fetch(`${supabaseUrl}/rest/v1/critiques`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({
+              project_title: projectTitle || 'Untitled',
+              project_description: projectDescription || '',
+              submission_type: submissionType || 'manual',
+              critique_text: critique,
+              tier: tier || 'free',
+              created_at: new Date().toISOString()
+            })
+          });
+          console.log('[Supabase] Critique persisted successfully');
+        } catch (sErr) {
+          console.error('[Supabase] Failed to persist critique:', sErr.message);
+        }
+      }
+      // ----------------------------
+
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ critique, tier, projectTitle }));
     } catch (err) {

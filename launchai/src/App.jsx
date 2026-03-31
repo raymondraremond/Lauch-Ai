@@ -1,7 +1,10 @@
 import { Suspense, lazy } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import Landing from './pages/Landing.jsx'
+import { AuthProvider, useAuth } from './contexts/AuthContext.jsx'
 
+const Auth = lazy(() => import('./pages/Auth.jsx'))
+const ResetPassword = lazy(() => import('./pages/ResetPassword.jsx'))
 const Onboarding = lazy(() => import('./pages/Onboarding.jsx'))
 const Dashboard = lazy(() => import('./pages/Dashboard.jsx'))
 const Builder = lazy(() => import('./pages/Builder.jsx'))
@@ -12,6 +15,20 @@ const Deploy = lazy(() => import('./pages/Deploy.jsx'))
 const InfoPage = lazy(() => import('./pages/Info.jsx'))
 const CritiquePage = lazy(() => import('./pages/CritiquePage.jsx'))
 const LiveApp = lazy(() => import('./pages/LiveApp.jsx'))
+
+// Protected Route Wrapper
+function ProtectedRoute({ children }) {
+  const { user, loading } = useAuth()
+  const location = useLocation()
+
+  if (loading) return null // Handled by PageLoader in App
+
+  if (!user) {
+    return <Navigate to="/auth" state={{ from: location }} replace />
+  }
+
+  return children
+}
 
 // Premium loading fallback for lazy-loaded routes
 function PageLoader() {
@@ -45,25 +62,34 @@ function PageLoader() {
 export default function App() {
   return (
     <BrowserRouter>
-      <Suspense fallback={<PageLoader />}>
-        <Routes>
-          <Route path="/"            element={<Landing />} />
-          <Route path="/onboarding"  element={<Onboarding />} />
-          <Route path="/dashboard"   element={<Dashboard />} />
-          <Route path="/builder"     element={<Builder />} />
-          <Route path="/copilot"     element={<Copilot />} />
-          <Route path="/companion"   element={<Companion />} />
-          <Route path="/settings"    element={<SettingsPage />} />
-          <Route path="/deploy"      element={<Deploy />} />
-          <Route path="/privacy"     element={<InfoPage />} />
-          <Route path="/terms"       element={<InfoPage />} />
-          <Route path="/changelog"   element={<InfoPage />} />
-          <Route path="/critique"    element={<CritiquePage />} />
-          <Route path="/p/:id"       element={<LiveApp />} />
-          {/* Catch-all: Redirect to Landing, but could be used for 404 in the future */}
-          <Route path="*"            element={<Navigate to="/" replace />} />
-        </Routes>
-      </Suspense>
+      <AuthProvider>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/"            element={<Landing />} />
+            <Route path="/auth"        element={<Auth />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            
+            {/* Public/Hybrid Routes */}
+            <Route path="/onboarding"  element={<Onboarding />} />
+            <Route path="/privacy"     element={<InfoPage />} />
+            <Route path="/terms"       element={<InfoPage />} />
+            <Route path="/changelog"   element={<InfoPage />} />
+            <Route path="/critique"    element={<CritiquePage />} />
+            <Route path="/p/:id"       element={<LiveApp />} />
+
+            {/* Private Routes */}
+            <Route path="/dashboard"   element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/builder"     element={<ProtectedRoute><Builder /></ProtectedRoute>} />
+            <Route path="/copilot"     element={<ProtectedRoute><Copilot /></ProtectedRoute>} />
+            <Route path="/companion"   element={<ProtectedRoute><Companion /></ProtectedRoute>} />
+            <Route path="/settings"    element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+            <Route path="/deploy"      element={<ProtectedRoute><Deploy /></ProtectedRoute>} />
+
+            {/* Catch-all */}
+            <Route path="*"            element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
+      </AuthProvider>
     </BrowserRouter>
   )
 }

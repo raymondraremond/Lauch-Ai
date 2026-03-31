@@ -1,6 +1,7 @@
-import { NavLink, Link, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Wand2, MessageSquare, Compass, Rocket, Settings, ChevronRight, Target } from 'lucide-react'
+import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom'
+import { LayoutDashboard, Wand2, MessageSquare, Compass, Rocket, Settings, ChevronRight, Target, LogOut } from 'lucide-react'
 import { getGeminiKeys } from '../lib/ApiKeyManager.js'
+import { useAuth } from '../contexts/AuthContext'
 
 const nav = [
   { label: 'Dashboard',  icon: LayoutDashboard, path: '/dashboard'  },
@@ -14,6 +15,8 @@ const nav = [
 
 export default function Sidebar() {
   const loc = useLocation()
+  const navigate = useNavigate()
+  const { user, signOut } = useAuth()
 
   // API Key Check
   const hasGemini = getGeminiKeys().length > 0 || !!import.meta.env.VITE_GOOGLE_API_KEY
@@ -74,12 +77,15 @@ export default function Sidebar() {
         <div className="p-3 rounded-[8px] border border-base bg-raised">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-[6px] h-[6px] bg-accent rounded-[1px]"></div>
-            <span className="font-mono text-[11px] tracking-[0.05em] uppercase text-primary">Free Plan</span>
+            <span className="font-mono text-[11px] tracking-[0.05em] uppercase text-primary">Pro Tier</span>
           </div>
-          <p className="font-body text-[12px] text-text-muted mb-2">2 projects · 500 API calls</p>
-          <Link to="/settings" className="font-body text-[12px] text-accent hover:text-accent-hover font-medium transition-colors">
-            Manage Keys →
-          </Link>
+          <p className="font-body text-[12px] text-text-muted mb-2">{user?.email || 'Guest User'}</p>
+          <button 
+            onClick={() => signOut().then(() => navigate('/'))}
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-[6px] border border-base hover:border-danger/30 hover:bg-danger/5 text-text-muted hover:text-danger transition-all text-[12px] font-medium mt-2"
+          >
+            <LogOut size={13} /> Sign Out
+          </button>
         </div>
       </div>
     </aside>

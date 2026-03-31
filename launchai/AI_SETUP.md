@@ -1,8 +1,8 @@
-# 🚀 Wiring Live AI to LaunchAI
+# 🚀 Wiring Live AI & Database to LaunchAI
 
-Follow this guide to get your AI features working for real. We recommend **Google Gemini** as it has a very generous **Free Tier**.
+Follow this guide to get your AI features and professional authentication working for real.
 
-## 1. Get Your API Keys
+## 1. Get Your AI API Keys
 
 ### 💎 Google Gemini (Best Free Tier)
 1. Go to [Google AI Studio](https://aistudio.google.com/).
@@ -10,26 +10,36 @@ Follow this guide to get your AI features working for real. We recommend **Googl
 3. Click **Create API Key in new project**.
 4. Copy your key.
 
-### 🎭 Anthropic Claude (Premium)
-1. Go to [Anthropic Console](https://console.anthropic.com/).
-2. Navigate to **API Keys**.
-3. Create a new key and copy it.
+---
+
+## 2. Connect Your Database (Supabase)
+
+LaunchAI now uses **Supabase** for professional authentication and project persistence. This enables multi-user support and data isolation.
+
+### Step 1: Create a Supabase Project
+1. Go to [Supabase](https://supabase.com/) and sign up/in.
+2. Create a new project.
+3. Once created, go to **Project Settings** > **API**.
+4. Copy the `Project URL` and `anon public` key.
+
+### Step 2: Set Up the Database
+1. In your Supabase Dashboard, go to the **SQL Editor** on the left.
+2. Open a new query and paste the contents of `supabase_setup.sql` (located in the project root).
+3. Click **Run**. This will create the `projects` table and enable Row Level Security (RLS).
 
 ---
 
-## 2. Configure Your Keys
+## 3. Configure Your Environment
 
-You have two ways to add your keys:
-
-### Option A: Use the Sidebar (Easiest)
-We've added a **Settings** section in the app sidebar. You can paste your keys there, and they will be saved securely in your browser's local storage. This is the fastest way to get started!
-
-### Option B: Use the `.env` file
-If you prefer a more technical approach, follow these steps:
 1. Find the `.env.example` file in the project folder.
 2. Duplicate it and rename the copy to `.env`.
-3. Open `.env` and paste your keys:
+3. Fill in your keys:
    ```bash
+   # Supabase Credentials
+   VITE_SUPABASE_URL=your_supabase_url_here
+   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+
+   # AI Engines
    VITE_GOOGLE_API_KEY=your_gemini_key_here
    VITE_ANTHROPIC_API_KEY=your_anthropic_key_here
    ```
@@ -37,25 +47,18 @@ If you prefer a more technical approach, follow these steps:
 
 ---
 
-## 3. How it Works
-LaunchAI is designed to be smart about your connections:
-1. **Gemini** will be used as the primary engine if you provide a key.
-2. **Claude** will be used if Gemini is missing or fails.
-3. **Demo Mode** will run automatically if no keys are found.
+## 4. Professional Features
 
-> [!TIP]
-> **No Database Needed!** Your keys are stored either in your `.env` file or your browser's local cache. We never send your keys to our own servers.
+### 🔐 Authentication
+LaunchAI supports **Email/Password** login out of the box. Users can sign up, sign in, and reset their passwords securely.
+
+### 🛡️ Data Isolation (RLS)
+The `supabase_setup.sql` script enables **Row Level Security**. This means that even though all projects are in one table, a user can *only* see and edit their own projects. This is "strict isolation" used in professional SaaS applications.
+
+### ☁️ Multi-User Cloud
+Your projects are no longer trapped in your browser's local cache. Log in from any device, and your workspace will be exactly where you left it.
 
 ---
 
-## 4. 🗄️ When to connect a Database (Neon/Postgres)?
-
-For now, LaunchAI uses **Local Persistence**, meaning your projects are saved directly in your browser. This is perfect for building and testing your own tools.
-
-You should consider connecting a real database like **Neon** when:
-1. **Multi-User Support**: You want users to create accounts and log in from any device.
-2. **Data Sharing**: You need to share projects or data between different users.
-3. **Scale**: You have thousands of projects or complex data relationships that need robust querying.
-4. **Production SaaS**: You are ready to turn your LaunchAI project into a commercial product with recurring billing and user profiles.
-
-*Stay tuned — we are building a one-click Neon integration for the next version!*
+> [!TIP]
+> **Authentication Redirects**: Ensure that in your Supabase Auth settings, the "Site URL" is set to your development URL (e.g., `http://localhost:5173`) so that magic links and password resets redirect correctly.

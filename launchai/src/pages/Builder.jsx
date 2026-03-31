@@ -37,7 +37,7 @@ export default function Builder() {
   const projectId = searchParams.get('id')
 
   // State
-  const [projectIdState, setProjectIdState] = useState(projectId ? parseInt(projectId) : null)
+  const [projectIdState, setProjectIdState] = useState(projectId || null)
   const [projectName, setProjectName] = useState('Untitled App')
   const [components, setComponents]   = useState([])
   const [selected, setSelected]       = useState(null)
@@ -55,21 +55,25 @@ export default function Builder() {
   // Load project or initialize
   useEffect(() => {
     if (projectIdState) {
-      try {
-        const p = getProjectById(projectIdState)
-        if (p) {
-          setProjectName(p.name)
-          setComponents(p.components || [])
-          setShowTemplateModal(false)
-        } else {
-          setError('Project not found')
+      async function loadProject() {
+        try {
+          setIsLoading(true)
+          const p = await getProjectById(projectIdState)
+          if (p) {
+            setProjectName(p.name)
+            setComponents(p.components || [])
+            setShowTemplateModal(false)
+          } else {
+            setError('Project not found')
+          }
+        } catch (err) {
+          setError('Failed to load project')
+          console.error(err)
+        } finally {
+          setIsLoading(false)
         }
-      } catch (err) {
-        setError('Failed to load project')
-        console.error(err)
-      } finally {
-        setIsLoading(false)
       }
+      loadProject()
     }
   }, [projectIdState])
 
@@ -108,7 +112,7 @@ export default function Builder() {
     setComponents(newComponents)
   }
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     setIsSaving(true)
     const p = {
       id: projectIdState,
@@ -116,15 +120,22 @@ export default function Builder() {
       components,
       status: 'draft'
     }
-    const saved = saveProject(p)
-    if (!projectIdState) setProjectIdState(saved.id)
-    
-    setTimeout(() => {
-      setIsSaving(false)
+    try {
+      const saved = await saveProject(p)
+      if (!projectIdState) {
+        setProjectIdState(saved.id)
+        // Update URL without reload to reflect new ID
+        window.history.replaceState(null, '', `/builder?id=${saved.id}`)
+      }
       setSaveSuccess(true)
       setTimeout(() => setSaveSuccess(false), 2000)
-    }, 800)
-    return saved
+      return saved
+    } catch (err) {
+      console.error('Failed to save project:', err)
+      alert('Failed to save project')
+    } finally {
+      setIsSaving(false)
+    }
   }, [projectIdState, projectName, components])
 
   const handleUseTemplate = () => {
@@ -359,7 +370,7 @@ export default function App() {
               <button onClick={downloadProjectCode} className="flex items-center gap-[6px] text-[13px] px-[12px] py-[6px] rounded-[6px] border border-base text-secondary hover:text-primary bg-raised hover:border-lit transition-colors"><Download size={14} /> <span className="hidden sm:inline">Export</span></button>
               <button onClick={() => setShowPreview(v => !v)} className={`flex items-center gap-[6px] text-[13px] px-[12px] py-[6px] rounded-[6px] border transition-colors duration-150 ${showPreview ? 'bg-accent-dim border-accent/40 text-accent font-medium' : 'border-base text-secondary hover:text-primary bg-raised hover:border-lit'}`}><Eye size={14} /> <span className="hidden sm:inline">{showPreview ? 'Edit' : 'Preview'}</span></button>
               <button onClick={handleSave} disabled={isSaving} className="flex items-center gap-[6px] text-[13px] px-[12px] py-[6px] rounded-[6px] border border-base bg-raised text-secondary hover:text-primary hover:border-lit transition-colors duration-150 disabled:opacity-50"><Save size={14} /> <span className="hidden sm:inline">Save</span></button>
-              <button onClick={() => { const s = handleSave(); navigate(`/deploy?id=${s.id}`) }} className="btn-primary text-[13px] px-[16px] py-[6px] !rounded-[6px]"><Rocket size={14} /> <span className="hidden sm:inline">Deploy</span></button>
+              <button onClick={() => { handleSave().then(s => { if (s) navigate(`/deploy?id=${s.id}`) }) }} className="btn-primary text-[13px] px-[16px] py-[6px] !rounded-[6px]"><Rocket size={14} /> <span className="hidden sm:inline">Deploy</span></button>
             </div>
           </div>
 

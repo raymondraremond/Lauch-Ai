@@ -1,19 +1,39 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar.jsx'
 import Sidebar from '../components/Sidebar.jsx'
-import { Plus, Zap, TrendingUp, Clock, ArrowRight, ExternalLink, Trash2, MoreHorizontal, Compass, Sparkles } from 'lucide-react'
+import { Plus, Zap, TrendingUp, Clock, ArrowRight, ExternalLink, Trash2, MoreHorizontal, Compass, Sparkles, Loader2 } from 'lucide-react'
 import { getProjects, deleteProject as deleteProjectFromStore } from '../lib/ProjectStore.js'
 
 export default function Dashboard() {
   const navigate  = useNavigate()
-  const [projects, setProjects] = useState(getProjects())
+  const [projects, setProjects] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  const totalCalls = projects.reduce((s, p) => s + p.calls, 0)
+  useEffect(() => {
+    async function loadProjects() {
+      try {
+        const data = await getProjects()
+        setProjects(data)
+      } catch (err) {
+        console.error('Failed to load projects:', err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    loadProjects()
+  }, [])
 
-  function deleteProject(id) {
-    const updated = deleteProjectFromStore(id)
-    setProjects(updated)
+  const totalCalls = projects.reduce((s, p) => s + (p.calls || 0), 0)
+
+  async function deleteProject(id) {
+    if (!window.confirm('Are you sure you want to delete this project?')) return
+    try {
+      await deleteProjectFromStore(id)
+      setProjects(prev => prev.filter(p => p.id !== id))
+    } catch (err) {
+      alert('Failed to delete project')
+    }
   }
 
   return (
@@ -54,7 +74,12 @@ export default function Dashboard() {
           </div>
 
           {/* Projects */}
-          {projects.length === 0 ? (
+          {isLoading ? (
+            <div className="card text-center py-16 flex flex-col items-center justify-center">
+              <Loader2 size={32} className="text-accent animate-spin mb-4" />
+              <p className="font-body text-secondary">Loading your projects...</p>
+            </div>
+          ) : projects.length === 0 ? (
             <div className="card text-center py-16">
               <div className="w-[48px] h-[48px] rounded-[12px] bg-accent-dim border border-glow flex items-center justify-center mx-auto mb-[16px]">
                 <Zap size={20} className="text-accent" />

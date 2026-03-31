@@ -21,21 +21,31 @@ export default function LiveApp() {
   const [isProcessing, setIsProcessing] = useState(false)
 
   useEffect(() => {
-    const p = getProjectById(id)
-    if (p) {
-      setProject(p)
-      // Initialize values
-      const initial = {}
-      p.components?.forEach(c => {
-        if (c.type === 'toggle') initial[c.id] = false
-        else if (c.type === 'dropdown') initial[c.id] = 'Option 1'
-        else initial[c.id] = ''
-      })
-      setValues(initial)
-    } else {
-      setError('Project not found')
+    async function loadProject() {
+      try {
+        setLoading(true)
+        const p = await getProjectById(id)
+        if (p) {
+          setProject(p)
+          // Initialize values
+          const initial = {}
+          p.components?.forEach(c => {
+            if (c.type === 'toggle') initial[c.id] = false
+            else if (c.type === 'dropdown') initial[c.id] = 'Option 1'
+            else initial[c.id] = ''
+          })
+          setValues(initial)
+        } else {
+          setError('Project not found')
+        }
+      } catch (err) {
+        setError('Failed to load project')
+        console.error(err)
+      } finally {
+        setLoading(false)
+      }
     }
-    setLoading(false)
+    loadProject()
   }, [id])
 
   async function handleRun() {
