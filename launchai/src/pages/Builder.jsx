@@ -79,7 +79,7 @@ export default function Builder() {
 
   const addComponent = (type) => {
     const def = PALETTE.find(p => p.type === type)
-    const id = Number(Date.now().toString() + Math.floor(Math.random() * 1000).toString().padStart(3, '0'))
+    const id = Date.now().toString() + Math.floor(Math.random() * 1000).toString().padStart(3, '0')
     const newComp = { 
       id, 
       type, 
@@ -152,7 +152,7 @@ export default function Builder() {
   const handleAiAction = useCallback((actionData) => {
     if (actionData.action === 'ADD') {
       const { type, label, variableId, systemPrompt } = actionData
-      const id = Number(Date.now().toString() + Math.floor(Math.random() * 1000).toString().padStart(3, '0'))
+      const id = Date.now().toString() + Math.floor(Math.random() * 1000).toString().padStart(3, '0')
       setComponents(prev => [...prev, { 
         id, 
         type, 

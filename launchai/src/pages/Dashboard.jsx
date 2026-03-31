@@ -4,11 +4,29 @@ import Navbar from '../components/Navbar.jsx'
 import Sidebar from '../components/Sidebar.jsx'
 import { Plus, Zap, TrendingUp, Clock, ArrowRight, ExternalLink, Trash2, MoreHorizontal, Compass, Sparkles, Loader2 } from 'lucide-react'
 import { getProjects, deleteProject as deleteProjectFromStore } from '../lib/ProjectStore.js'
+import { useAuth } from '../contexts/AuthContext'
 
 export default function Dashboard() {
   const navigate  = useNavigate()
+  const { user, profile } = useAuth()
   const [projects, setProjects] = useState([])
   const [isLoading, setIsLoading] = useState(true)
+
+  const firstName = profile?.full_name?.split(' ')[0] || user?.user_metadata?.full_name?.split(' ')[0] || 'there'
+  const hour = new Date().getHours()
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
+
+  function formatRelativeTime(dateStr) {
+    if (!dateStr) return 'just now'
+    const date = new Date(dateStr)
+    const now = new Date()
+    const diff = Math.floor((now - date) / 1000)
+    
+    if (diff < 60) return 'just now'
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
+    return `${Math.floor(diff / 86400)}d ago`
+  }
 
   useEffect(() => {
     async function loadProjects() {
@@ -46,8 +64,8 @@ export default function Dashboard() {
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h1 className="font-display text-[28px] font-semibold text-primary mb-1 tracking-[-0.03em]">My Projects</h1>
-              <p className="font-body text-[14px] text-secondary">Build and manage your AI-powered apps</p>
+              <h1 className="font-display text-[28px] font-semibold text-primary mb-1 tracking-[-0.03em]">{greeting}, {firstName}</h1>
+              <p className="font-body text-[14px] text-secondary">You have {projects.length} project{projects.length !== 1 ? 's' : ''} active.</p>
             </div>
             <button onClick={() => navigate('/builder')} className="btn-primary">
               <Plus size={16} /> New Project
@@ -59,7 +77,7 @@ export default function Dashboard() {
             {[
               { label: 'Total Projects', value: projects.length,  icon: Zap,         suffix: '' },
               { label: 'AI Calls This Month', value: totalCalls, icon: TrendingUp,    suffix: '' },
-              { label: 'Calls Remaining',  value: 500 - totalCalls, icon: Clock,      suffix: ' / 500' },
+              { label: 'Status',  value: 'Active', icon: Clock,      suffix: '' },
             ].map(s => (
               <div key={s.label} className="card flex items-center gap-[16px]">
                 <div className="w-[40px] h-[40px] rounded-[8px] bg-accent-dim border border-glow flex items-center justify-center">
@@ -128,7 +146,7 @@ export default function Dashboard() {
                     <div className="flex items-center gap-[12px] font-mono text-[11px] text-text-muted uppercase tracking-[0.05em]">
                       <span><strong className="text-secondary font-medium tracking-normal text-[12px] lowercase">{p.calls}</strong> calls</span>
                       <span>·</span>
-                      <span>Updated {p.updated}</span>
+                      <span>Updated {p.updated || formatRelativeTime(p.updated_at)}</span>
                     </div>
                     <div className="flex items-center gap-[8px]">
                       {p.status === 'live' && (

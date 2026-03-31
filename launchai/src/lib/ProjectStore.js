@@ -50,7 +50,10 @@ export async function getProjects() {
     return []
   }
 
-  return data
+  return data.map(p => ({
+    ...p,
+    components: p.components?.map(c => ({ ...c, id: String(c.id) })) || []
+  }))
 }
 
 /**
@@ -72,7 +75,10 @@ export async function getProjectById(id) {
     return null
   }
 
-  return data
+  return {
+    ...data,
+    components: data.components?.map(c => ({ ...c, id: String(c.id) })) || []
+  }
 }
 
 /**
@@ -87,7 +93,8 @@ export async function saveProject(project) {
     user_id: user.id,
     updated_at: new Date().toISOString(),
     calls: project.calls || 0,
-    tag: project.tag || 'AI App'
+    tag: project.tag || 'AI App',
+    components: project.components?.map(c => ({ ...c, id: String(c.id) })) || []
   }
 
   // If id is null, remove it so Supabase generates a UUID

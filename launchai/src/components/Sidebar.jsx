@@ -16,7 +16,7 @@ const nav = [
 export default function Sidebar() {
   const loc = useLocation()
   const navigate = useNavigate()
-  const { user, signOut } = useAuth()
+  const { user, profile, signOut } = useAuth()
 
   // API Key Check
   const hasGemini = getGeminiKeys().length > 0 || !!import.meta.env.VITE_GOOGLE_API_KEY
@@ -73,16 +73,36 @@ export default function Sidebar() {
           </div>
         </div>
 
-        {/* Plan Upgrade (Original) */}
-        <div className="p-3 rounded-[8px] border border-base bg-raised">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-[6px] h-[6px] bg-accent rounded-[1px]"></div>
-            <span className="font-mono text-[11px] tracking-[0.05em] uppercase text-primary">Pro Tier</span>
+        {/* Profile Badge (Premium) */}
+        <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10 backdrop-blur-md">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="relative">
+              {profile?.avatar_url || user?.user_metadata?.avatar_url ? (
+                <img 
+                  src={profile?.avatar_url || user?.user_metadata?.avatar_url} 
+                  alt="Profile" 
+                  className="w-10 h-10 rounded-full border border-accent/30 object-cover"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center text-accent font-bold">
+                  {user?.email?.[0].toUpperCase() || 'U'}
+                </div>
+              )}
+              <div className="absolute -right-0.5 -bottom-0.5 w-3 h-3 bg-[#10b981] border-2 border-base rounded-full shadow-sm"></div>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-display font-semibold text-primary text-[14px] truncate leading-tight">
+                {profile?.full_name || user?.user_metadata?.full_name || 'User Account'}
+              </p>
+              <p className="font-mono text-[10px] text-text-muted uppercase tracking-wider mt-0.5">
+                Developer Plan
+              </p>
+            </div>
           </div>
-          <p className="font-body text-[12px] text-text-muted mb-2">{user?.email || 'Guest User'}</p>
+          
           <button 
             onClick={() => signOut().then(() => navigate('/'))}
-            className="w-full flex items-center justify-center gap-2 py-2 rounded-[6px] border border-base hover:border-danger/30 hover:bg-danger/5 text-text-muted hover:text-danger transition-all text-[12px] font-medium mt-2"
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-white/5 hover:bg-danger/10 border border-white/5 hover:border-danger/20 text-text-muted hover:text-danger transition-all duration-200 text-[12px] font-semibold"
           >
             <LogOut size={13} /> Sign Out
           </button>

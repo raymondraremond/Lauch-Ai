@@ -30,9 +30,10 @@ export default function LiveApp() {
           // Initialize values
           const initial = {}
           p.components?.forEach(c => {
-            if (c.type === 'toggle') initial[c.id] = false
-            else if (c.type === 'dropdown') initial[c.id] = 'Option 1'
-            else initial[c.id] = ''
+            const key = String(c.id)
+            if (c.type === 'toggle') initial[key] = false
+            else if (c.type === 'dropdown') initial[key] = 'Option 1'
+            else initial[key] = ''
           })
           setValues(initial)
         } else {
