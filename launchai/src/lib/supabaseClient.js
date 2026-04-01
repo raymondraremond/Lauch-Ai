@@ -1,7 +1,15 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+// Standard Vite way
+const metaUrl = import.meta.env.VITE_SUPABASE_URL
+const metaKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+// Vercel / process.env fallback (defined in vite.config.js)
+const procUrl = typeof process !== 'undefined' ? process.env?.VITE_SUPABASE_URL : null
+const procKey = typeof process !== 'undefined' ? process.env?.VITE_SUPABASE_ANON_KEY : null
+
+const supabaseUrl = metaUrl || procUrl
+const supabaseAnonKey = metaKey || procKey
 
 export const supabaseConfigured = !!(supabaseUrl && supabaseAnonKey)
 
