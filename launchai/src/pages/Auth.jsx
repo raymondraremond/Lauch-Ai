@@ -61,10 +61,15 @@ export default function Auth() {
   async function handleSocial(provider) {
     setError(null)
     try {
-      if (provider === 'google') await signInWithGoogle()
-      if (provider === 'github') await signInWithGitHub()
+      let response;
+      if (provider === 'google') response = await signInWithGoogle()
+      if (provider === 'github') response = await signInWithGitHub()
+      
+      if (response && response.error) {
+        throw response.error
+      }
     } catch (err) {
-      setError(err.message)
+      setError(err.message || 'Failed to sign in with provider')
     }
   }
 
