@@ -13,6 +13,10 @@ const supabaseAnonKey = metaKey || procKey
 
 export const supabaseConfigured = !!(supabaseUrl && supabaseAnonKey)
 
+if (!supabaseConfigured && typeof window !== 'undefined') {
+  console.warn('⚠️ [SUPABASE CONFIG] Missing environment variables. Dashboard requires VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.')
+}
+
 export const supabase = supabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey, {
       auth: {

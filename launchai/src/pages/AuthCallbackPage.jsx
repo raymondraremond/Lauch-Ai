@@ -13,22 +13,20 @@ export default function AuthCallbackPage() {
         const { data, error } = await supabase.auth.getSession()
         
         if (error) {
+          console.error('Auth callback error:', error.message)
           setErrorMsg(error.message)
           setStatus('error')
+          // Auto-redirect to auth page after 3s even on error
+          setTimeout(() => { window.location.href = '/auth' }, 3000)
           return
         }
 
         if (data.session) {
           setStatus('success')
-          // Redirect to dashboard after short delay
-          setTimeout(() => {
-            window.location.href = '/dashboard'
-          }, 1500)
+          setTimeout(() => { window.location.href = '/dashboard' }, 1000)
         } else {
           // Try exchanging the code from URL
-          const hashParams = new URLSearchParams(
-            window.location.hash.substring(1)
-          )
+          const hashParams = new URLSearchParams(window.location.hash.substring(1))
           const accessToken = hashParams.get('access_token')
           
           if (accessToken) {
@@ -37,20 +35,26 @@ export default function AuthCallbackPage() {
               refresh_token: hashParams.get('refresh_token') || ''
             })
             if (setError) {
+              console.error('Session setting error:', setError.message)
               setErrorMsg(setError.message)
               setStatus('error')
+              setTimeout(() => { window.location.href = '/auth' }, 3000)
             } else {
               setStatus('success')
-              setTimeout(() => { window.location.href = '/dashboard' }, 1500)
+              setTimeout(() => { window.location.href = '/dashboard' }, 1000)
             }
           } else {
+            console.warn('No access token found in URL hash')
             setErrorMsg('No session found after OAuth redirect')
             setStatus('error')
+            setTimeout(() => { window.location.href = '/auth' }, 3000)
           }
         }
       } catch (err) {
+        console.error('Auth callback exception:', err.message)
         setErrorMsg(err.message)
         setStatus('error')
+        setTimeout(() => { window.location.href = '/auth' }, 3000)
       }
     }
 
