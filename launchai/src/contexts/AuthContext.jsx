@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react'
-import { supabase } from '../lib/supabaseClient'
+import { supabase, supabaseConfigured } from '../lib/supabaseClient'
 
 const AuthContext = createContext({})
 
@@ -11,6 +11,7 @@ export const AuthProvider = ({ children }) => {
   const initialized = useRef(false)
 
   const fetchProfile = async (userId) => {
+    if (!supabase) return;
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -26,6 +27,11 @@ export const AuthProvider = ({ children }) => {
   }
 
   useEffect(() => {
+    if (!supabaseConfigured || !supabase) {
+      setLoading(false)
+      return
+    }
+
     // Safety timeout: Never leave the user on a loading screen for more than 6s
     const timer = setTimeout(() => {
       console.warn('Auth loading timed out — forcing ready state')
@@ -93,22 +99,29 @@ export const AuthProvider = ({ children }) => {
   }, [])
 
   const value = {
-    signUp: (data) => supabase.auth.signUp(data),
-    signIn: (data) => supabase.auth.signInWithPassword(data),
-    signInWithGoogle: () => supabase.auth.signInWithOAuth({
+    signUp: (data) => supabase?.auth.signUp(data),
+    signIn: (data) => supabase?.auth.signInWithPassword(data),
+    signInWithGoogle: () => supabase?.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin + '/dashboard' }
+      options: { 
+        redirectTo: window.location.origin + '/auth/callback',
+        queryParams: { access_type: 'offline', prompt: 'consent' }
+      }
     }),
-    signInWithGitHub: () => supabase.auth.signInWithOAuth({
+    signInWithGitHub: () => supabase?.auth.signInWithOAuth({
       provider: 'github',
-      options: { redirectTo: window.location.origin + '/dashboard' }
+      options: { 
+        redirectTo: window.location.origin + '/auth/callback',
+        queryParams: { access_type: 'offline', prompt: 'consent' }
+      }
     }),
-    signOut: () => supabase.auth.signOut(),
-    resetPassword: (email) => supabase.auth.resetPasswordForEmail(email),
+    signOut: () => supabase?.auth.signOut(),
+    resetPassword: (email) => supabase?.auth.resetPasswordForEmail(email),
     user,
     profile,
     session,
-    loading
+    loading,
+    supabaseConfigured
   }
 
   return (

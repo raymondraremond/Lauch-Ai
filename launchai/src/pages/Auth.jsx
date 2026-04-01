@@ -7,7 +7,39 @@ import {
 } from 'lucide-react'
 import Navbar from '../components/Navbar'
 
+import { supabase, supabaseConfigured } from '../lib/supabaseClient'
+
 export default function Auth() {
+  if (!supabaseConfigured || !supabase) {
+    return (
+      <div style={{
+        background: '#1a1a2e',
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '24px'
+      }}>
+        <div style={{
+          background: '#fff',
+          borderRadius: '16px',
+          padding: '40px',
+          maxWidth: '420px',
+          width: '100%',
+          textAlign: 'center'
+        }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚠️</div>
+          <h2 style={{ color: '#111', marginBottom: '8px' }}>Configuration Missing</h2>
+          <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: 1.6 }}>
+            Supabase environment variables are not configured.
+            Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
+            to your Vercel environment variables and redeploy.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   const { user, signIn, signUp, signInWithGoogle, signInWithGitHub, resetPassword } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()

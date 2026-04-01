@@ -2,6 +2,7 @@ import { Suspense, lazy } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import Landing from './pages/Landing.jsx'
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx'
+import AuthCallbackPage from './pages/AuthCallbackPage.jsx'
 
 const Auth = lazy(() => import('./pages/Auth.jsx'))
 const ResetPassword = lazy(() => import('./pages/ResetPassword.jsx'))
@@ -71,6 +72,7 @@ export default function App() {
           <Routes>
             <Route path="/"            element={<Landing />} />
             <Route path="/auth"        element={<Auth />} />
+            <Route path="/auth/callback" element={<AuthCallbackPage />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             
             {/* Public/Hybrid Routes */}
