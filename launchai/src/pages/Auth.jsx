@@ -31,9 +31,10 @@ export default function Auth() {
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚠️</div>
           <h2 style={{ color: '#111', marginBottom: '8px' }}>Configuration Missing</h2>
           <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: 1.6 }}>
-            Supabase environment variables are not configured.
-            Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
-            to your Vercel environment variables and redeploy.
+            Missing: { !import.meta.env.VITE_SUPABASE_URL ? 'URL ' : '' }{ !import.meta.env.VITE_SUPABASE_ANON_KEY ? 'Anon_Key' : '' }
+            <br />
+            Please ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY 
+            are added to Vercel and you have <b>Redeployed</b> since adding them.
           </p>
         </div>
       </div>
