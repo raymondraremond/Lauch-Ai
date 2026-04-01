@@ -21,7 +21,11 @@ function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
   const location = useLocation()
 
-  if (loading) return null // Handled by PageLoader in App
+  // During OAuth callbacks, the hash contains tokens that Supabase is processing.
+  // Never redirect to /auth while this is happening — the user IS authenticating.
+  const isOAuthCallback = window.location.hash.includes('access_token=')
+
+  if (loading || (isOAuthCallback && !user)) return <PageLoader />
 
   if (!user) {
     return <Navigate to="/auth" state={{ from: location }} replace />
