@@ -15,16 +15,25 @@ console.log('Available Environment Keys:', allKeys.join(', '));
 
 requiredKeys.forEach(key => {
   const value = process.env[key];
-  if (value) {
-    console.log(`✅ [FOUND] ${key} (${value.length} characters)`);
-    if (value.includes(' ')) {
-      console.warn(`⚠️ [WARNING] ${key} contains spaces! This will break connection.`);
+  const unprefixedKey = key.replace('VITE_', '');
+  const fallbackValue = process.env[unprefixedKey];
+
+  if (value || fallbackValue) {
+    if (value) {
+      console.log(`✅ [FOUND] ${key} (${value.length} characters)`);
+    } else {
+      console.log(`✅ [COMPATIBILITY] Using ${unprefixedKey} as fallback for ${key} (${fallbackValue.length} characters)`);
     }
-    if (value.startsWith('"') || value.endsWith('"') || value.startsWith("'") || value.endsWith("'")) {
-      console.warn(`⚠️ [WARNING] ${key} is wrapped in quotes! Vercel UI shouldn't have quotes.`);
+    
+    const actualValue = value || fallbackValue;
+    if (actualValue.includes(' ')) {
+      console.warn(`⚠️ [WARNING] Value contains spaces! This will break connection.`);
+    }
+    if (actualValue.startsWith('"') || actualValue.endsWith('"') || actualValue.startsWith("'") || actualValue.endsWith("'")) {
+      console.warn(`⚠️ [WARNING] Value is wrapped in quotes! Vercel UI shouldn't have quotes.`);
     }
   } else {
-    console.error(`❌ [MISSING] ${key}`);
+    console.error(`❌ [MISSING] ${key} (and no unprefixed ${unprefixedKey} found)`);
     
     // Check if it's misnamed
     const findMisname = commonMisnames.find(mk => process.env[mk]);
