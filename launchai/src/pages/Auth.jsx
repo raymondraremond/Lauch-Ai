@@ -36,6 +36,35 @@ export default function Auth() {
             Please ensure <b>VITE_SUPABASE_URL</b> and <b>VITE_SUPABASE_ANON_KEY</b> 
             are added to Vercel and you have <b>Redeployed</b> since adding them.
           </p>
+
+          <div style={{
+            marginTop: '24px',
+            padding: '16px',
+            background: '#f9fafb',
+            borderRadius: '12px',
+            border: '1px solid #e5e7eb',
+            textAlign: 'left'
+          }}>
+            <h4 style={{ color: '#374151', fontSize: '12px', fontWeight: 600, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              🔍 Debug Information
+            </h4>
+            <div style={{ fontSize: '11px', color: '#6b7280', fontFamily: 'monospace', lineHeight: 1.5 }}>
+              <div><b>Project ID:</b> {import.meta.env.VITE_VERCEL_PROJECT_ID || 'Local / Not Found'}</div>
+              <div style={{ marginTop: '8px', fontWeight: 600 }}>Detected Keys:</div>
+              <ul style={{ paddingLeft: '16px', margin: '4px 0' }}>
+                {Object.keys(import.meta.env)
+                  .filter(k => k.startsWith('VITE_'))
+                  .map(k => (
+                    <li key={k} style={{ color: k.includes('SUPABASE') ? '#10b981' : '#6b7280' }}>
+                      {k}: {import.meta.env[k] ? '✅ (Set)' : '❌ (Empty)'}
+                    </li>
+                  ))}
+              </ul>
+              <div style={{ marginTop: '8px', fontSize: '10px', color: '#9ca3af' }}>
+                Tip: Compare the Project ID above with the one in your Vercel Dashboard URL to ensure you're editing the correct project.
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     )
