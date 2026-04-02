@@ -1,3 +1,5 @@
+import fs from 'fs';
+
 console.log('--- 🛡️ SUPABASE BUILD-TIME AUDIT ---');
 
 const requiredKeys = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'];
@@ -16,7 +18,10 @@ requiredKeys.forEach(key => {
   if (value) {
     console.log(`✅ [FOUND] ${key} (${value.length} characters)`);
     if (value.includes(' ')) {
-      console.warn(`⚠️ [WARNING] ${key} contains spaces! This might break Vite.`);
+      console.warn(`⚠️ [WARNING] ${key} contains spaces! This will break connection.`);
+    }
+    if (value.startsWith('"') || value.endsWith('"') || value.startsWith("'") || value.endsWith("'")) {
+      console.warn(`⚠️ [WARNING] ${key} is wrapped in quotes! Vercel UI shouldn't have quotes.`);
     }
   } else {
     console.error(`❌ [MISSING] ${key}`);
@@ -33,8 +38,19 @@ requiredKeys.forEach(key => {
 if (missing === 0) {
   console.log('✅ ALL KEYS PRESENT IN ENVIRONMENT');
 } else {
-  console.error(`❌ ${missing} REQUIRED KEYS ARE MISSING. FAILING BUILD.`);
-  console.error('ACTION REQUIRED: Add these keys in Vercel > Project Settings > Environment Variables.');
-  process.exit(1); // Fail the build immediately
+  const isCI = process.env.VERCEL === '1' || process.env.CI === 'true';
+  const hasEnvFile = fs.existsSync('.env');
+
+  if (isCI) {
+    console.error(`❌ ${missing} REQUIRED KEYS ARE MISSING. FAILING BUILD.`);
+    console.error('ACTION REQUIRED: Add these keys in Vercel > Project Settings > Environment Variables.');
+    process.exit(1); 
+  } else if (hasEnvFile) {
+    console.log(`⚠️ [LOCAL NOTICE] ${missing} keys missing from shell, but .env exists. Vite will load them automatically.`);
+    console.log('✅ PASSING LOCAL AUDIT');
+  } else {
+    console.error(`❌ ${missing} REQUIRED KEYS ARE MISSING AND NO .ENV FILE FOUND.`);
+    process.exit(1);
+  }
 }
 console.log('--- AUDIT COMPLETE ---');

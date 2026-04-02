@@ -1,10 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Standard Vite way
+// Direct access to Vite's bundled variables (primary)
 const metaUrl = import.meta.env.VITE_SUPABASE_URL
 const metaKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-// Vercel / process.env fallback (defined in vite.config.js)
+// Manual process.env fallback (captured during build via vite.config.js)
 const procUrl = typeof process !== 'undefined' ? process.env?.VITE_SUPABASE_URL : null
 const procKey = typeof process !== 'undefined' ? process.env?.VITE_SUPABASE_ANON_KEY : null
 

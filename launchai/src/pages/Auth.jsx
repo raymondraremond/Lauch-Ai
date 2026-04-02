@@ -31,9 +31,9 @@ export default function Auth() {
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚠️</div>
           <h2 style={{ color: '#111', marginBottom: '8px' }}>Configuration Missing</h2>
           <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: 1.6 }}>
-            Missing: { !import.meta.env.VITE_SUPABASE_URL ? 'URL ' : '' }{ !import.meta.env.VITE_SUPABASE_ANON_KEY ? 'Anon_Key' : '' }
+            Missing: { !(import.meta.env.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL) ? 'URL ' : '' }{ !(import.meta.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY) ? 'Anon_Key' : '' }
             <br />
-            Please ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY 
+            Please ensure <b>VITE_SUPABASE_URL</b> and <b>VITE_SUPABASE_ANON_KEY</b> 
             are added to Vercel and you have <b>Redeployed</b> since adding them.
           </p>
         </div>
