@@ -7,68 +7,10 @@ import {
 } from 'lucide-react'
 import Navbar from '../components/Navbar'
 
-import { supabase, supabaseConfigured } from '../lib/supabaseClient'
+import { supabase, supabaseConfigured } from '../lib/supabase'
 
 export default function Auth() {
-  if (!supabaseConfigured || !supabase) {
-    return (
-      <div style={{
-        background: '#1a1a2e',
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '24px'
-      }}>
-        <div style={{
-          background: '#fff',
-          borderRadius: '16px',
-          padding: '40px',
-          maxWidth: '420px',
-          width: '100%',
-          textAlign: 'center'
-        }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚠️</div>
-          <h2 style={{ color: '#111', marginBottom: '8px' }}>Configuration Missing</h2>
-          <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: 1.6 }}>
-            Missing: { !(import.meta.env.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL) ? 'URL ' : '' }{ !(import.meta.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY) ? 'Anon_Key' : '' }
-            <br />
-            Please ensure <b>VITE_SUPABASE_URL</b> and <b>VITE_SUPABASE_ANON_KEY</b> 
-            are added to Vercel and you have <b>Redeployed</b> since adding them.
-          </p>
 
-          <div style={{
-            marginTop: '24px',
-            padding: '16px',
-            background: '#f9fafb',
-            borderRadius: '12px',
-            border: '1px solid #e5e7eb',
-            textAlign: 'left'
-          }}>
-            <h4 style={{ color: '#374151', fontSize: '12px', fontWeight: 600, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              🔍 Debug Information
-            </h4>
-            <div style={{ fontSize: '11px', color: '#6b7280', fontFamily: 'monospace', lineHeight: 1.5 }}>
-              <div><b>Project ID:</b> {import.meta.env.VITE_VERCEL_PROJECT_ID || 'Local / Not Found'}</div>
-              <div style={{ marginTop: '8px', fontWeight: 600 }}>Detected Keys:</div>
-              <ul style={{ paddingLeft: '16px', margin: '4px 0' }}>
-                {Object.keys(import.meta.env)
-                  .filter(k => k.startsWith('VITE_'))
-                  .map(k => (
-                    <li key={k} style={{ color: k.includes('SUPABASE') ? '#10b981' : '#6b7280' }}>
-                      {k}: {import.meta.env[k] ? '✅ (Set)' : '❌ (Empty)'}
-                    </li>
-                  ))}
-              </ul>
-              <div style={{ marginTop: '8px', fontSize: '10px', color: '#9ca3af' }}>
-                Tip: Compare the Project ID above with the one in your Vercel Dashboard URL to ensure you're editing the correct project.
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   const { user, signIn, signUp, signInWithGoogle, signInWithGitHub, resetPassword } = useAuth()
   const navigate = useNavigate()
@@ -164,6 +106,19 @@ export default function Auth() {
           </div>
 
           <div className="card-premium p-8 shadow-2xl">
+            {!supabaseConfigured && (
+              <div style={{
+                background: '#fef3c7',
+                border: '1px solid #f59e0b',
+                borderRadius: '8px',
+                padding: '12px',
+                marginBottom: '16px',
+                fontSize: '13px',
+                color: '#92400e'
+              }}>
+                ⚠️ Supabase connection issue. Please try refreshing.
+              </div>
+            )}
             {error && (
               <div className="mb-6 p-4 rounded-lg bg-danger/10 border border-danger/20 flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
                 <AlertCircle size={18} className="text-danger shrink-0 mt-0.5" />

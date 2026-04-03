@@ -2,7 +2,7 @@
  * ProjectStore.js
  * Manages project persistence in Supabase for LaunchAI.
  */
-import { supabase } from './supabaseClient'
+import { supabase } from './supabase'
 
 const DEMO_PROJECTS = [
   {

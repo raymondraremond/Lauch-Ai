@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import CritiqueSubmit from '../components/CritiqueSubmit';
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../lib/supabase';
 import { FileText, Clock, ChevronRight, MessageSquare, Trash2, Calendar } from 'lucide-react';
 
 export default function CritiquePage() {

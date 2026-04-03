@@ -3,7 +3,7 @@
  * Secure abstraction for AI calls via our backend proxy.
  * This ensures API keys stay hidden and credits are tracked.
  */
-import { supabase } from './supabaseClient'
+import { supabase } from './supabase'
 
 const BACKEND_URL = '/api'
 

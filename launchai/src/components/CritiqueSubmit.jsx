@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../lib/supabase';
 import { getUserCredits } from '../lib/AIClient.js';
 
 // ⬇️ Change to your deployed server URL in production
