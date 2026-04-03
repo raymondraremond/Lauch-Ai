@@ -100,6 +100,12 @@ export default function Landing() {
   const [featureRef, featureVisible] = useScrollReveal()
   const [pricingRef, pricingVisible] = useScrollReveal()
 
+  useEffect(() => {
+    if (window.location.hash.includes('access_token=') || window.location.hash.includes('error=')) {
+      navigate('/auth/callback' + window.location.hash)
+    }
+  }, [navigate])
+
   return (
     <div className="min-h-screen bg-void font-body overflow-x-hidden relative text-primary">
       <div className="grain-overlay"></div>
