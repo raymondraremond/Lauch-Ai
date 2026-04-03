@@ -42,11 +42,8 @@ const handleUserCredits = async (userId, amount) => {
     const profile = (await res.json())[0];
     if (!profile) return { error: 'Profile not found' };
     
-    let newCredits = (profile.credits || 0) + amount;
-    if (newCredits < 0) {
-      // Emergency bug compensation: Replenish 50 credits if they drained them during the infinite hang bug
-      newCredits = 50; 
-    }
+    const newCredits = (profile.credits || 0) + amount;
+    if (newCredits < 0) return { error: 'Insufficient credits', credits: profile.credits };
     await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`, {
       method: 'PATCH',
       headers: {
