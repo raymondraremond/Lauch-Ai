@@ -1,97 +1,40 @@
-import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
 
 export default function AuthCallbackPage() {
-  const [status, setStatus] = useState('loading') // 'loading' | 'success' | 'error'
-  const [errorMsg, setErrorMsg] = useState('')
+  const { user, loading } = useAuth()
+  const navigate = useNavigate()
 
   useEffect(() => {
-    async function handleCallback() {
-      try {
-        // Supabase automatically handles the OAuth callback
-        // when detectSessionInUrl: true is set in the client
-        if (!supabase) {
-          setErrorMsg('Supabase not configured')
-          setStatus('error')
-          setTimeout(() => { window.location.href = '/auth' }, 3000)
-          return
-        }
-        const { data, error } = await supabase.auth.getSession()
-        
-        if (error) {
-          console.error('Auth callback error:', error.message)
-          setErrorMsg(error.message)
-          setStatus('error')
-          // Auto-redirect to auth page after 3s even on error
-          setTimeout(() => { window.location.href = '/auth' }, 3000)
-          return
-        }
-
-        if (data.session) {
-          setStatus('success')
-          setTimeout(() => { window.location.href = '/dashboard' }, 1000)
-        } else {
-          // Try exchanging the code from URL
-          const hashParams = new URLSearchParams(window.location.hash.substring(1))
-          const accessToken = hashParams.get('access_token')
-          
-          if (accessToken) {
-            const { error: setError } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: hashParams.get('refresh_token') || ''
-            })
-            if (setError) {
-              console.error('Session setting error:', setError.message)
-              setErrorMsg(setError.message)
-              setStatus('error')
-              setTimeout(() => { window.location.href = '/auth' }, 3000)
-            } else {
-              setStatus('success')
-              setTimeout(() => { window.location.href = '/dashboard' }, 1000)
-            }
-          } else {
-            console.warn('No access token found in URL hash')
-            setErrorMsg('No session found after OAuth redirect')
-            setStatus('error')
-            setTimeout(() => { window.location.href = '/auth' }, 3000)
-          }
-        }
-      } catch (err) {
-        console.error('Auth callback exception:', err.message)
-        setErrorMsg(err.message)
-        setStatus('error')
-        setTimeout(() => { window.location.href = '/auth' }, 3000)
-      }
+    // If we're no longer loading and have a user, head to dashboard
+    if (!loading && user) {
+      const timer = setTimeout(() => {
+        navigate('/dashboard', { replace: true })
+      }, 500)
+      return () => clearTimeout(timer)
     }
-
-    handleCallback()
-  }, [])
-
-  if (status === 'loading') return (
-    <div style={styles.screen}>
-      <div style={styles.spinner} />
-      <p style={styles.text}>Completing sign in...</p>
-    </div>
-  )
-
-  if (status === 'success') return (
-    <div style={styles.screen}>
-      <div style={{ fontSize: '48px' }}>✅</div>
-      <p style={styles.text}>Signed in! Redirecting to dashboard...</p>
-    </div>
-  )
+    
+    // If we're not loading and still no user after 5 seconds, something failed
+    if (!loading && !user) {
+      const timer = setTimeout(() => {
+        navigate('/auth', { replace: true })
+      }, 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [user, loading, navigate])
 
   return (
     <div style={styles.screen}>
-      <div style={{ fontSize: '48px' }}>❌</div>
-      <p style={{ ...styles.text, color: '#ef4444' }}>Sign in failed</p>
-      <p style={{ color: '#6b7280', fontSize: '14px' }}>{errorMsg}</p>
-      <button
-        onClick={() => window.location.href = '/'}
-        style={styles.btn}
-      >
-        Try Again
-      </button>
+      <div className="flex flex-col items-center gap-6 animate-fade-up">
+        <div style={styles.spinner} />
+        <div className="text-center">
+          <p style={styles.text}>Finalizing your secure session...</p>
+          <p style={{ color: '#6b7280', fontSize: '12px', marginTop: '8px' }}>
+            Preparing your AI development environment
+          </p>
+        </div>
+      </div>
     </div>
   )
 }

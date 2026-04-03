@@ -24,7 +24,9 @@ function ProtectedRoute({ children }) {
 
   // During OAuth callbacks, the hash contains tokens that Supabase is processing.
   // Never redirect to /auth while this is happening — the user IS authenticating.
-  const isOAuthCallback = window.location.hash.includes('access_token=')
+  const isOAuthCallback = window.location.hash.includes('access_token=') || 
+                          window.location.hash.includes('type=recovery') ||
+                          window.location.pathname === '/auth/callback'
 
   if (loading || (isOAuthCallback && !user)) return <PageLoader />
 

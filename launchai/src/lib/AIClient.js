@@ -3,12 +3,12 @@
  * Secure abstraction for AI calls via our backend proxy.
  * This ensures API keys stay hidden and credits are tracked.
  */
-import { supabase } from './supabase'
+import { AI_MODELS } from './AIConfig'
 
-const BACKEND_URL = '/api'
+const BACKEND_URL = ''
 
 export async function callAI(options) {
-  const { prompt, parts, model = 'gemini-2.5-flash' } = options
+  const { prompt, parts, model = AI_MODELS.DEFAULT_GENERATION } = options
 
   // Get current session for token
   if (!supabase) throw new Error('Supabase not configured')
