@@ -42,6 +42,11 @@ const handleUserCredits = async (userId, amount) => {
     const profile = (await res.json())[0];
     if (!profile) return { error: 'Profile not found' };
     
+    // Admin/Founder Bypass - If tier is founder, never block them
+    if (profile.tier === 'founder') {
+      return { credits: 99999 };
+    }
+
     const newCredits = (profile.credits || 0) + amount;
     if (newCredits < 0) return { error: 'Insufficient credits', credits: profile.credits };
     await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`, {
