@@ -88,9 +88,7 @@ export default async function handler(req, res) {
        return;
     }
 
-    const chunks = [];
-    for await (const chunk of req) chunks.push(chunk);
-    const body = JSON.parse(Buffer.concat(chunks).toString());
+    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
 
     try {
       const geminiRes = await fetch(
@@ -117,9 +115,7 @@ export default async function handler(req, res) {
       return;
     }
 
-    const chunks = [];
-    for await (const chunk of req) chunks.push(chunk);
-    const body = JSON.parse(Buffer.concat(chunks).toString());
+    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     const { tier, projectTitle, projectDescription, submissionType } = body;
 
     const cost = tier === 'pro' ? 3 : 1;
