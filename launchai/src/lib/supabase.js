@@ -8,14 +8,26 @@ const supabaseAnonKey =
 console.log('Supabase URL:', supabaseUrl ? 'Found' : 'MISSING')
 console.log('Supabase Key:', supabaseAnonKey ? 'Found' : 'MISSING')
 
-export const supabaseConfigured = !!(supabaseUrl && supabaseAnonKey)
+let supabaseClient = null;
+let isConfigured = false;
 
-export const supabase = supabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey, {
+if (supabaseUrl && supabaseAnonKey) {
+  try {
+    // Basic validation to ensure it's a valid URL, otherwise createClient throws an uncatchable top-level error.
+    new URL(supabaseUrl);
+    
+    supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: true,
       }
-    })
-  : null
+    });
+    isConfigured = true;
+  } catch (err) {
+    console.error('🚨 [Supabase] Initialization Failed (Invalid URL?):', err.message);
+  }
+}
+
+export const supabaseConfigured = isConfigured;
+export const supabase = supabaseClient;
