@@ -36,6 +36,7 @@ const DEMO_PROJECTS = [
  * Get projects for the current authenticated user.
  */
 export async function getProjects() {
+  if (!supabase) return []
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
 
@@ -60,6 +61,7 @@ export async function getProjects() {
  * Get a single project by ID, ensuring it belongs to the current user.
  */
 export async function getProjectById(id) {
+  if (!supabase) return null
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
@@ -85,6 +87,7 @@ export async function getProjectById(id) {
  * Save or update a project for the current authenticated user.
  */
 export async function saveProject(project) {
+  if (!supabase) throw new Error('Supabase not configured')
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Authentication required to save projects.')
 
@@ -119,6 +122,7 @@ export async function saveProject(project) {
  * Delete a project, ensuring user ownership.
  */
 export async function deleteProject(id) {
+  if (!supabase) throw new Error('Supabase not configured')
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Authentication required.')
 

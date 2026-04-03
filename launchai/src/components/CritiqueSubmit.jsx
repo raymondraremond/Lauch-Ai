@@ -1,3 +1,9 @@
+import React, { useState } from 'react';
+import { 
+  Sparkles, Zap, Type, FileText, Link as LinkIcon, 
+  Upload, ShieldCheck, X, Check, ChevronRight, AlertCircle 
+} from 'lucide-react';
+import CritiqueResult from './CritiqueResult';
 import { supabase } from '../lib/supabase';
 import { getUserCredits } from '../lib/AIClient.js';
 
@@ -111,6 +117,7 @@ export default function CritiqueSubmit() {
         bodyData = { submissionType: 'link', projectTitle: formData.projectTitle, url: formData.url, additionalContext: formData.additionalContext, tier };
       }
 
+      if (!supabase) throw new Error('Authentication service not available. Please try again later.');
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
 

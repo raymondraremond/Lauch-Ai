@@ -11,6 +11,7 @@ export default function CritiquePage() {
 
   const fetchHistory = async () => {
     try {
+      if (!supabase) { setLoading(false); return; }
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 

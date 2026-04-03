@@ -11,6 +11,7 @@ export async function callAI(options) {
   const { prompt, parts, model = 'gemini-2.5-flash' } = options
 
   // Get current session for token
+  if (!supabase) throw new Error('Supabase not configured')
   const { data: { session } } = await supabase.auth.getSession()
   const token = session?.access_token
 
@@ -40,6 +41,7 @@ export async function callAI(options) {
 }
 
 export async function getUserCredits() {
+  if (!supabase) return 0
   const { data: { session } } = await supabase.auth.getSession()
   const token = session?.access_token
 

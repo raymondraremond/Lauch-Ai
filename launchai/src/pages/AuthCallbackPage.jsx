@@ -10,6 +10,12 @@ export default function AuthCallbackPage() {
       try {
         // Supabase automatically handles the OAuth callback
         // when detectSessionInUrl: true is set in the client
+        if (!supabase) {
+          setErrorMsg('Supabase not configured')
+          setStatus('error')
+          setTimeout(() => { window.location.href = '/auth' }, 3000)
+          return
+        }
         const { data, error } = await supabase.auth.getSession()
         
         if (error) {

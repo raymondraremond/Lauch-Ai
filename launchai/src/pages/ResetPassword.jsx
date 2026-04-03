@@ -13,6 +13,7 @@ export default function ResetPassword() {
 
   // Double check if we have a recovery session
   useEffect(() => {
+    if (!supabase) return;
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
         // Option: Redirect to auth if no session, but usually the link provides it
@@ -27,6 +28,7 @@ export default function ResetPassword() {
     setLoading(true)
 
     try {
+      if (!supabase) throw new Error('Supabase not configured')
       const { error } = await supabase.auth.updateUser({ password })
       if (error) throw error
       setSuccess(true)
