@@ -30,7 +30,7 @@ export default function Navbar({ minimal = false }) {
                   className="px-3 py-1.5 font-body text-[13px] text-secondary hover:text-primary transition-colors flex items-center gap-2"
                 >
                   <User size={14} className="text-accent" />
-                  <span className="max-w-[120px] truncate">{user.email}</span>
+                  <span className="max-w-[120px] truncate">{user?.email || 'User'}</span>
                 </button>
                 <div className="h-4 w-[1px] bg-white/10" />
                 <button 

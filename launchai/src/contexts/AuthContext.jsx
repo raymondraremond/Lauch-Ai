@@ -27,74 +27,97 @@ export const AuthProvider = ({ children }) => {
   }
 
   useEffect(() => {
-    if (!supabaseConfigured || !supabase) {
+    console.log('🔄 [AUTH PROVIDER] Initializing...')
+    
+    // Safety check: if supabase client failed to initialize or is not configured
+    if (!supabaseConfigured || !supabase || !supabase.auth) {
+      console.warn('⚠️ [AUTH PROVIDER] Skipping auth initialization (Supabase not configured)')
       setLoading(false)
       return
     }
 
     // Safety timeout: Never leave the user on a loading screen for more than 6s
     const timer = setTimeout(() => {
-      console.warn('Auth loading timed out — forcing ready state')
+      console.warn('🚨 [AUTH PROVIDER] Loading timed out — forcing ready state')
       setLoading(false)
     }, 6000)
 
-    // CRITICAL: Subscribe to auth changes FIRST (before getSession) so we
-    // never miss a SIGNED_IN event that Supabase fires when it processes
-    // the #access_token hash fragment during an OAuth callback.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
-        console.log('Auth event:', event, '| Has session:', !!currentSession)
+    let subscription = null
 
-        setSession(currentSession)
-        const currentUser = currentSession?.user ?? null
-        setUser(currentUser)
+    try {
+      console.log('📡 [AUTH PROVIDER] Subscribing to auth state changes...')
+      // CRITICAL: Subscribe to auth changes FIRST (before getSession)
+      const { data } = supabase.auth.onAuthStateChange(
+        async (event, currentSession) => {
+          console.log('🔔 [AUTH PROVIDER] Event:', event, '| Has session:', !!currentSession)
 
-        if (currentUser) {
-          await fetchProfile(currentUser.id)
+          setSession(currentSession)
+          const currentUser = currentSession?.user ?? null
+          setUser(currentUser)
+
+          if (currentUser) {
+            await fetchProfile(currentUser.id)
+          } else {
+            setProfile(null)
+          }
+
+          const hashHasToken = window.location.hash.includes('access_token=')
+          if (event === 'INITIAL_SESSION' && !currentSession && hashHasToken) {
+            console.log('ℹ️ [AUTH PROVIDER] OAuth callback detected — waiting for SIGNED_IN...')
+            return 
+          }
+
+          if (event === 'SIGNED_IN' && hashHasToken) {
+            window.history.replaceState(null, '', window.location.pathname + window.location.search)
+          }
+
+          if (!initialized.current) {
+            console.log('✅ [AUTH PROVIDER] Initialized via onAuthStateChange')
+            clearTimeout(timer)
+            initialized.current = true
+            setLoading(false)
+          }
+        }
+      )
+      subscription = data?.subscription
+    } catch (err) {
+      console.error('❌ [AUTH PROVIDER] onAuthStateChange failed:', err.message)
+      setLoading(false)
+    }
+
+    // getSession() kicks off the session recovery
+    try {
+      console.log('🔍 [AUTH PROVIDER] Fetching initial session...')
+      supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
+        if (initialized.current) {
+          console.log('ℹ️ [AUTH PROVIDER] Already initialized via event.')
+          return
+        }
+  
+        if (existingSession) {
+          console.log('✅ [AUTH PROVIDER] Found existing session.')
+          setSession(existingSession)
+          setUser(existingSession.user)
+          fetchProfile(existingSession.user.id)
         } else {
-          setProfile(null)
+          console.log('ℹ️ [AUTH PROVIDER] No session found.')
         }
-
-        // For INITIAL_SESSION: If there's a hash with access_token but no
-        // session yet, Supabase will fire SIGNED_IN shortly after — wait for it.
-        const hashHasToken = window.location.hash.includes('access_token=')
-        if (event === 'INITIAL_SESSION' && !currentSession && hashHasToken) {
-          console.log('OAuth callback detected — waiting for SIGNED_IN event...')
-          return // Don't clear loading yet; SIGNED_IN will follow
-        }
-
-        // After successful OAuth sign-in, clean up the hash fragment
-        // to prevent stale tokens on page refresh
-        if (event === 'SIGNED_IN' && hashHasToken) {
-          window.history.replaceState(null, '', window.location.pathname + window.location.search)
-        }
-
-        // For every other event (SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED, etc.)
-        // or INITIAL_SESSION with a valid session — we're done loading.
+        
         clearTimeout(timer)
         initialized.current = true
         setLoading(false)
-      }
-    )
-
-    // getSession() kicks off the session recovery (including hash exchange).
-    // The result will come through onAuthStateChange above.
-    supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
-      // If onAuthStateChange already initialized us, skip.
-      if (initialized.current) return
-
-      // If getSession found a session and onAuthStateChange hasn't fired yet,
-      // set the state optimistically. onAuthStateChange will confirm it.
-      if (existingSession) {
-        setSession(existingSession)
-        setUser(existingSession.user)
-        fetchProfile(existingSession.user.id)
-      }
-    })
+      }).catch(err => {
+        console.error('❌ [AUTH PROVIDER] getSession failed:', err.message)
+        setLoading(false)
+      })
+    } catch (err) {
+      console.error('❌ [AUTH PROVIDER] getSession sync error:', err.message)
+      setLoading(false)
+    }
 
     return () => {
       clearTimeout(timer)
-      subscription.unsubscribe()
+      if (subscription) subscription.unsubscribe()
     }
   }, [])
 
