@@ -1,5 +1,6 @@
 import { forwardRef, useState, useEffect, useImperativeHandle, useRef, useCallback } from 'react'
 import { callAI, getUserCredits } from '../lib/AIClient.js'
+import { AI_MODELS } from '../lib/AIConfig.js'
 import { getGeminiKeys } from '../lib/ApiKeyManager.js'
 import { Bot, User, X, Image as ImageIcon, Loader, Sparkles, Send } from 'lucide-react'
 
@@ -89,7 +90,7 @@ const ChatWidget = forwardRef(({ placeholder = "Ask your AI copilot anything…"
           })),
           ...parts
         ],
-        model: 'gemini-2.5-flash'
+        model: AI_MODELS.DEFAULT_GENERATION
       })
 
       const reply = data.candidates?.[0]?.content?.parts?.[0]?.text

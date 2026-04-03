@@ -1,4 +1,5 @@
 import { callAI, getUserCredits } from '../lib/AIClient.js'
+import { AI_MODELS } from '../lib/AIConfig.js'
 
 export default function LiveApp() {
   const { id } = useParams()
@@ -93,7 +94,7 @@ export default function LiveApp() {
         // Call Backend AI
         const data = await callAI({
           parts,
-          model: 'gemini-2.5-flash'
+          model: AI_MODELS.DEFAULT_GENERATION
         })
 
         if (data.error) throw new Error(data.error)

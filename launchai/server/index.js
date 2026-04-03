@@ -120,7 +120,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    const { prompt, parts, model = 'gemini-2.5-flash' } = await getBody();
+    const { prompt, parts, model = 'gemini-1.5-flash' } = await getBody();
     
     // Check & Decrement Credit
     const creditCheck = await handleUserCredits(userId, -1);
@@ -214,7 +214,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       // Call Gemini 3.1 Pro Preview endpoint for advanced reasoning capability
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${apiKey}`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
