@@ -1,5 +1,7 @@
 import { forwardRef, useState, useEffect, useImperativeHandle, useRef, useCallback } from 'react'
 import { callAI, getUserCredits } from '../lib/AIClient.js'
+import { getGeminiKeys } from '../lib/ApiKeyManager.js'
+import { Bot, User, X, Image as ImageIcon, Loader, Sparkles, Send } from 'lucide-react'
 
 const SYSTEM_PROMPT = `You are the LaunchAI Copilot, a world-class AI developer.
 Your goal is to help users build sophisticated AI applications by adding components to their canvas.
