@@ -25,18 +25,33 @@ try {
 
 // Support the user's instruction about GEMINI_API_KEY or use the existing VITE_GOOGLE_API_KEY
 const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GOOGLE_API_KEY;
+const anthropicKey = process.env.ANTHROPIC_API_KEY || process.env.VITE_ANTHROPIC_API_KEY;
 
 const PORT = 4000;
 
-const setCorsHeaders = (res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+const setCorsHeaders = (req, res) => {
+  const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://lauch-ai-fwx4.vercel.app',
+    process.env.FRONTEND_URL
+  ].filter(Boolean)
+
+  const origin = req.headers.origin;
+  if (!origin) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  } else if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+
   res.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET, POST, PUT, DELETE');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
 };
 
 const server = http.createServer(async (req, res) => {
   if (req.method === 'OPTIONS') {
-    setCorsHeaders(res);
+    setCorsHeaders(req, res);
     res.writeHead(204);
     res.end();
     return;
@@ -99,8 +114,19 @@ const server = http.createServer(async (req, res) => {
     return user?.id || null;
   };
 
+  if (req.method === 'GET' && (req.url === '/' || req.url === '')) {
+    setCorsHeaders(req, res);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ 
+      status: 'LaunchAI server running ✅',
+      environment: process.env.NODE_ENV || 'development',
+      timestamp: new Date().toISOString()
+    }));
+    return;
+  }
+
   if (req.method === 'GET' && req.url === '/api/user/credits') {
-    setCorsHeaders(res);
+    setCorsHeaders(req, res);
     const userId = await getUserIdFromToken(req.headers.authorization);
     if (!userId) {
       res.writeHead(401); res.end(JSON.stringify({ error: 'Unauthorized' }));
@@ -113,7 +139,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'POST' && req.url === '/api/generate') {
-    setCorsHeaders(res);
+    setCorsHeaders(req, res);
     const userId = await getUserIdFromToken(req.headers.authorization);
     if (!userId) {
       res.writeHead(401); res.end(JSON.stringify({ error: 'Unauthorized' }));
@@ -147,14 +173,14 @@ const server = http.createServer(async (req, res) => {
 
   // Paystack Webhook Placeholder
   if (req.method === 'POST' && req.url === '/api/paystack/webhook') {
-    setCorsHeaders(res);
+    setCorsHeaders(req, res);
     console.log('[Paystack Webhook] Received event (NGN Transition Ready)');
     res.writeHead(200); res.end(JSON.stringify({ status: 'ok' }));
     return;
   }
 
   if (req.method === 'POST' && req.url === '/api/critique') {
-    setCorsHeaders(res);
+    setCorsHeaders(req, res);
     const userId = await getUserIdFromToken(req.headers.authorization);
     if (!userId) {
       res.writeHead(401); res.end(JSON.stringify({ error: 'Unauthorized' }));
@@ -272,6 +298,76 @@ const server = http.createServer(async (req, res) => {
       console.error(err);
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Internal server error' }));
+    }
+    return;
+  }
+
+  if (req.method === 'POST' && req.url === '/api/companion') {
+    setCorsHeaders(req, res);
+    const userId = await getUserIdFromToken(req.headers.authorization);
+    if (!userId) {
+      res.writeHead(401); res.end(JSON.stringify({ error: 'Unauthorized' }));
+      return;
+    }
+
+    const { systemPrompt, userMessage, provider = 'gemini' } = await getBody();
+
+    // Check & Decrement 1 Credit for companion analysis
+    const creditCheck = await handleUserCredits(userId, -1);
+    if (creditCheck.error) {
+      res.writeHead(402); res.end(JSON.stringify({ error: 'Insufficient credits (NGN top-up required)', credits: creditCheck.credits }));
+      return;
+    }
+
+    try {
+      let aiResponseText = '';
+      let usedProvider = '';
+
+      if (provider === 'anthropic' && anthropicKey) {
+        const anthRes = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': anthropicKey,
+            'anthropic-version': '2023-06-01'
+          },
+          body: JSON.stringify({
+            model: 'claude-3-5-sonnet-20240620',
+            max_tokens: 2048,
+            system: systemPrompt,
+            messages: [{ role: 'user', content: userMessage }]
+          })
+        });
+        const data = await anthRes.json();
+        aiResponseText = data.content?.[0]?.text || 'No response from Claude.';
+        usedProvider = 'Claude Sonnet';
+      } else if (apiKey) {
+        // Default to Gemini
+        const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: systemPrompt }] },
+            contents: [{ role: 'user', parts: [{ text: userMessage }] }],
+            generationConfig: { maxOutputTokens: 2048, temperature: 0.7 }
+          })
+        });
+        const data = await geminiRes.json();
+        aiResponseText = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response from Gemini.';
+        usedProvider = 'Gemini Pro';
+      } else {
+        throw new Error('No AI provider keys configured on server');
+      }
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ 
+        response: aiResponseText, 
+        provider: usedProvider,
+        remainingCredits: creditCheck.credits 
+      }));
+    } catch (err) {
+      console.error('[Companion Proxy] Error:', err);
+      res.writeHead(500); res.end(JSON.stringify({ error: 'Companion Analysis Failed' }));
     }
     return;
   }

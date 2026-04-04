@@ -6,7 +6,7 @@
 import { supabase } from './supabase'
 import { AI_MODELS } from './AIConfig'
 
-const BACKEND_URL = ''
+import { API_BASE } from './config'
 
 export async function callAI(options) {
   const { prompt, parts, model = AI_MODELS.DEFAULT_GENERATION } = options
@@ -20,7 +20,7 @@ export async function callAI(options) {
     throw new Error('Authentication required for AI features.')
   }
 
-  const response = await fetch(`${BACKEND_URL}/api/generate`, {
+  const response = await fetch(`${API_BASE}/api/generate`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -48,7 +48,7 @@ export async function getUserCredits() {
 
   if (!token) return 0
 
-  const response = await fetch(`${BACKEND_URL}/api/user/credits`, {
+  const response = await fetch(`${API_BASE}/api/user/credits`, {
     headers: { 'Authorization': `Bearer ${token}` }
   })
   const data = await response.json()

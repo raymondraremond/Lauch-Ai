@@ -7,8 +7,7 @@ import CritiqueResult from './CritiqueResult';
 import { supabase } from '../lib/supabase';
 import { getUserCredits } from '../lib/AIClient.js';
 
-// ⬇️ Change to your deployed server URL in production
-const API_BASE = "/api";
+import { API_BASE } from '../lib/config';
 
 export default function CritiqueSubmit() {
   const [screen, setScreen] = useState('form');
