@@ -27,19 +27,21 @@ const PALETTE = [
 ]
 
 // ─── Idea-to-Scaffold Modal ──────────────────────────────────────────────────
-const SCAFFOLD_SYSTEM_PROMPT = `You are a LaunchAI app scaffolder. Given a product idea description, output a JSON array of components to build the app.
+const SCAFFOLD_SYSTEM_PROMPT = `You are a LaunchAI app scaffolder. Given a product idea description, output ONLY a valid JSON object. Do not include markdown codeblocks, conversational text, or explanations.
 
 Rules:
-- Output ONLY a valid JSON array, no markdown, no explanation.
-- Each object must have: { "type", "label", "variableId", "systemPrompt" }
 - Types allowed: text-input, textarea, toggle, dropdown, file-upload, structured-result, ai-chat, chart, weather-card, api-status
-- Only structured-result and ai-chat need a systemPrompt.
-- Use {{variableId}} in systemPrompts to reference input values.
 - Build 3-6 components that form a complete, functional app.
-- Also output a "name" field (top-level, not in array) as the product name.
+- Provide a concise product name.
 
 Output format example:
-{ "name": "Invoice Analyzer", "components": [{"type":"file-upload","label":"Upload Invoice","variableId":"invoice_file","systemPrompt":""},{"type":"structured-result","label":"AI Analysis","variableId":"analysis","systemPrompt":"Analyze the invoice at {{invoice_file}} and extract: vendor, total, line items, due date."}] }`
+{ 
+  "name": "Invoice Analyzer", 
+  "components": [
+    {"type":"file-upload","label":"Upload Invoice","variableId":"invoice_file","systemPrompt":""},
+    {"type":"structured-result","label":"AI Analysis","variableId":"analysis","systemPrompt":"Analyze the invoice at {{invoice_file}} and extract: vendor, total, line items, due date."}
+  ] 
+}`
 
 function IdeaScaffoldModal({ onScaffold, onUseTemplate, onBlank, onCancel }) {
   const [idea, setIdea] = useState('')
@@ -66,17 +68,25 @@ function IdeaScaffoldModal({ onScaffold, onUseTemplate, onBlank, onCancel }) {
         ],
         model: AI_MODELS.DEFAULT_GENERATION
       })
+      
       const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
-      // Strip markdown code fences if present
-      const clean = raw.replace(/```json?/gi, '').replace(/```/g, '').trim()
+      
+      // Extremely robust JSON extraction
+      let clean = raw.trim()
+      const jsonMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/i) || raw.match(/({[\s\S]*})/)
+      if (jsonMatch) clean = jsonMatch[1].trim()
+      
       const parsed = JSON.parse(clean)
-      const components = (parsed.components || parsed).map((c, i) => ({
+      const parsedComps = parsed.components || (Array.isArray(parsed) ? parsed : [])
+      
+      const components = parsedComps.map((c, i) => ({
         id: Date.now().toString() + i,
         type: c.type,
-        label: c.label,
+        label: c.label || 'Component',
         variableId: c.variableId || `var_${i}`,
         systemPrompt: c.systemPrompt || ''
       }))
+      
       onScaffold(components, parsed.name || idea.trim())
     } catch (err) {
       console.error('Scaffold error:', err)

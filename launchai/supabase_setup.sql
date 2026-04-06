@@ -19,6 +19,11 @@ CREATE TABLE IF NOT EXISTS projects (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- Safely add columns if the table already existed but was missing them
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS desc TEXT;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS tag TEXT DEFAULT 'AI App';
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS calls INTEGER DEFAULT 0;
+
 -- 3. Enable RLS
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 
