@@ -66,7 +66,8 @@ const ChatWidget = forwardRef(({ placeholder = "Ask your AI copilot anything…"
         cleanReply = cleanReply.replace(full, '')
       }
 
-      setMessages(prev => [...prev, { role: 'assistant', content: cleanReply.trim(), provider }])
+      const displayContent = cleanReply.trim() || "I've updated your canvas with the requested components."
+      setMessages(prev => [...prev, { role: 'assistant', content: displayContent, provider }])
       setLoading(false)
     }
 

@@ -20,8 +20,8 @@ async function getFreshToken() {
   
   // 2. If no session, wait briefly and retry (handles rapid navigation case)
   if (!session) {
-    console.warn('⚠️ [AI CLIENT] No session found, waiting for auth layer...')
-    await new Promise(r => setTimeout(r, 800))
+    console.warn('⚠️ [AI CLIENT] No session found, waiting...')
+    await new Promise(r => setTimeout(r, 100))
     const { data: { session: retry } } = await supabase.auth.getSession()
     if (!retry) return null
     return retry.access_token
@@ -58,17 +58,6 @@ export async function callAI(options) {
 
   console.log(`📡 [AI CLIENT] Fetching ${model} from ${API_BASE}...`)
   
-  // PROACTIVE LOCAL VALIDATION: Verify token works against Supabase directly first
-  try {
-    const { data: { user }, error: authErr } = await supabase.auth.getUser(token)
-    if (authErr || !user) {
-      console.error('❌ [AI CLIENT] Local token validation failed:', authErr?.message)
-      throw new Error(`Auth Error: ${authErr?.message || 'Invalid session'}. Please sign out and sign back in to reset your connection.`)
-    }
-    console.log('✅ [AI CLIENT] Token verified locally against Supabase.')
-  } catch (e) {
-    console.warn('⚠️ [AI CLIENT] Could not verify token locally, proceeding to proxy anyway...', e.message)
-  }
 
   try {
     const response = await fetch(`${API_BASE}/api/generate`, {
