@@ -273,7 +273,7 @@ export default function Builder() {
       return saved
     } catch (err) {
       console.error('Failed to save project:', err)
-      alert('Failed to save project')
+      alert('Failed to save project: ' + (err.message || 'Please check your connection and login status.'))
     } finally {
       setIsSaving(false)
     }
@@ -679,15 +679,24 @@ export default function App() {
                 <FileText size={14} /> <span className="hidden sm:inline">Copy Code</span>
               </button>
               <button onClick={downloadProjectCode} className="flex items-center gap-[6px] text-[13px] px-[12px] py-[6px] rounded-[6px] border border-base text-secondary hover:text-primary bg-raised hover:border-lit transition-colors"><Download size={14} /> <span className="hidden sm:inline">Export</span></button>
-              {projectIdState && (
-                <button
-                  onClick={() => navigate(`/companion?projectId=${projectIdState}&projectName=${encodeURIComponent(projectName)}`)}
-                  title="Get help with this project in AI Companion"
-                  className="flex items-center gap-[6px] text-[13px] px-[12px] py-[6px] rounded-[6px] border border-accent/30 bg-accent-dim text-accent hover:bg-accent/15 transition-colors"
-                >
-                  <Compass size={14} /> <span className="hidden sm:inline">Get help</span>
-                </button>
-              )}
+              <button
+                onClick={async () => {
+                  let passId = projectIdState;
+                  if (!passId) {
+                    try {
+                      const saved = await handleSave();
+                      if (saved?.id) passId = saved.id;
+                    } catch (err) {
+                      console.warn("Could not save before companion handoff, proceeding as draft", err);
+                    }
+                  }
+                  navigate(`/companion?projectId=${passId || 'draft'}&projectName=${encodeURIComponent(projectName)}`);
+                }}
+                title="Get help with this project in AI Companion"
+                className="flex items-center gap-[6px] text-[13px] px-[12px] py-[6px] rounded-[6px] border border-accent/30 bg-accent-dim text-accent hover:bg-accent/15 transition-colors"
+              >
+                <Compass size={14} /> <span className="hidden sm:inline">Get help</span>
+              </button>
               <button onClick={() => setShowPreview(v => !v)} className={`flex items-center gap-[6px] text-[13px] px-[12px] py-[6px] rounded-[6px] border transition-colors duration-150 ${showPreview ? 'bg-accent-dim border-accent/40 text-accent font-medium' : 'border-base text-secondary hover:text-primary bg-raised hover:border-lit'}`}><Eye size={14} /> <span className="hidden sm:inline">{showPreview ? 'Edit' : 'Preview'}</span></button>
               <button onClick={handleSave} disabled={isSaving} className="flex items-center gap-[6px] text-[13px] px-[12px] py-[6px] rounded-[6px] border border-base bg-raised text-secondary hover:text-primary hover:border-lit transition-colors duration-150 disabled:opacity-50"><Save size={14} /> <span className="hidden sm:inline">Save</span></button>
               <button onClick={() => { handleSave().then(s => { if (s) navigate(`/deploy?id=${s.id}`) }) }} className="btn-primary text-[13px] px-[16px] py-[6px] !rounded-[6px]"><Rocket size={14} /> <span className="hidden sm:inline">Deploy</span></button>
