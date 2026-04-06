@@ -4,8 +4,9 @@
  */
 export const AI_MODELS = {
   // Stable, mid-tier model for general generation tasks (Builder, Chat, Companion)
-  DEFAULT_GENERATION: 'gemini-2.5-flash',
+  DEFAULT_GENERATION: 'gemini-3-flash-preview',
   
   // High-capability model for complex reasoning and critique (Backend Project Critique)
   ADVANCED_REASONING: 'gemini-3.1-pro-preview',
+
 };

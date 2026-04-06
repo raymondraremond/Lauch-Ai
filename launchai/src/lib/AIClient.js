@@ -45,7 +45,7 @@ async function getFreshToken() {
   return session.access_token
 }
 
-export async function callAI(options) {
+export async function callAI(options, retryCount = 0) {
   const { prompt, parts, model = AI_MODELS.DEFAULT_GENERATION } = options
 
   if (!supabase) throw new Error('Supabase not configured')
@@ -56,8 +56,11 @@ export async function callAI(options) {
     throw new Error('Authentication required. Please sign in again.')
   }
 
-  console.log(`📡 [AI CLIENT] Fetching ${model} from ${API_BASE}...`)
-  
+  if (retryCount === 0) {
+    console.log(`📡 [AI CLIENT] Fetching ${model} from ${API_BASE}...`)
+  } else {
+    console.log(`🔄 [AI CLIENT] Retry attempt ${retryCount}/3 for ${model}...`)
+  }
 
   try {
     const response = await fetch(`${API_BASE}/api/generate`, {
@@ -85,6 +88,28 @@ export async function callAI(options) {
     if (!response.ok) {
       console.error(`❌ [AI CLIENT] Proxy error (${response.status}):`, data.error)
       
+      // AUTO-RETRY LOGIC FOR 429 (Rate Limit)
+      // Check for 429 OR 500 with quota message (backend passthrough fallback)
+      const errorMsg = data.error || '';
+      const isQuotaError = response.status === 429 || errorMsg.includes('quota') || errorMsg.includes('rate limit');
+
+      if (isQuotaError && retryCount < 3) {
+        let waitMs = Math.pow(2, retryCount) * 5000; // Exponential: 5s, 10s, 20s
+        
+        // Try to parse "retry in X.Xs" from error message (Provided by Google API)
+        const match = errorMsg.match(/retry in ([\d\.]+)s/);
+        if (match && match[1]) {
+          waitMs = (parseFloat(match[1]) * 1000) + 1000; // Add 1s safety buffer
+        }
+        
+        // Cap wait at 45 seconds to avoid UI hang
+        waitMs = Math.min(waitMs, 45000);
+
+        console.info(`⏳ [AI CLIENT] Rate limited. Waiting ${Math.round(waitMs/1000)}s before retry ${retryCount + 1}...`);
+        await new Promise(r => setTimeout(r, waitMs));
+        return callAI(options, retryCount + 1);
+      }
+
       if (response.status === 402) {
         throw new Error('Insufficient credits. Please top up in Settings.')
       }

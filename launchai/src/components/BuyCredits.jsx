@@ -1,5 +1,6 @@
 import { CreditCard, Zap, CheckCircle2, ArrowRight, Wallet, Loader } from 'lucide-react'
 import { useState } from 'react'
+import { useAuth } from '../contexts/AuthContext'
 
 /**
  * BuyCredits.jsx
@@ -15,13 +16,42 @@ export default function BuyCredits() {
     { id: 'team', label: 'Team', credits: 1000, price: '₦25,000', icon: Wallet, perk: 'Full Project Support' }
   ]
 
+  const { user } = useAuth()
+
   const handlePurchase = (planId) => {
+    if (!user) {
+      alert("Please sign in to buy credits.")
+      return
+    }
+
+    const plan = PLANS.find(p => p.id === planId)
+    const amount = parseInt(plan.price.replace(/[^\d]/g, '')) * 100 // kobo
+    
     setLoading(true)
-    // Simulate top-up flow
-    setTimeout(() => {
-      setLoading(false)
-      alert(`Top-up flow for ${planId} plan initiated. Integrated with Paystack backend.`)
-    }, 1500)
+    
+    const handler = window.PaystackPop.setup({
+      key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || 'pk_test_placeholder', // YOUR PUBLIC KEY
+      email: user.email,
+      amount: amount,
+      currency: "NGN",
+      metadata: {
+        user_id: user.id,
+        plan_id: planId,
+        custom_fields: [
+          { display_name: "User ID", variable_name: "user_id", value: user.id }
+        ]
+      },
+      callback: (response) => {
+        setLoading(false)
+        // Redirect to verification page with reference
+        window.location.href = `/payment/verify?reference=${response.reference}`
+      },
+      onClose: () => {
+        setLoading(false)
+      }
+    });
+
+    handler.openIframe();
   }
 
   return (

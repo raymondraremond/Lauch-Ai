@@ -179,8 +179,8 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      // Use the model provided by the client, defaulting to gemini-2.5-flash as per AIConfig.js
-      const activeModel = model || 'gemini-2.5-flash';
+      // Use the model provided by the client, defaulting to gemini-3-flash-preview as per AIConfig.js
+      const activeModel = model || 'gemini-3-flash-preview';
 
       try {
         const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${apiKey}`, {
@@ -199,8 +199,9 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ ...data, remainingCredits: creditCheck.credits }));
       } catch (err) {
         console.error('[AI Proxy] Error:', err.message);
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'AI Generation Failed: ' + err.message }));
+        const statusCode = err.message.includes('quota') || err.message.includes('429') ? 429 : 500;
+        res.writeHead(statusCode, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
       }
       return;
     }
@@ -286,7 +287,7 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+      const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -299,6 +300,87 @@ const server = http.createServer(async (req, res) => {
 
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ response: aiResponseText, remainingCredits: creditCheck.credits }));
+      return;
+    }
+
+    if (req.method === 'GET' && req.url.startsWith('/api/paystack/verify')) {
+      setCorsHeaders(req, res);
+      const urlParams = new URL(req.url, `http://${req.headers.host}`);
+      const reference = urlParams.searchParams.get('reference');
+      const paystackSecret = process.env.PAYSTACK_SECRET_KEY;
+
+      if (!reference || !paystackSecret) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Missing reference or server key' }));
+        return;
+      }
+
+      try {
+        const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
+          headers: { 'Authorization': `Bearer ${paystackSecret}` }
+        });
+        const data = await verifyRes.json();
+
+        if (data.status && data.data.status === 'success') {
+          const userId = data.data.metadata?.user_id;
+          const amountPaid = data.data.amount / 100;
+          
+          let creditsToAdd = 0;
+          if (amountPaid >= 25000) creditsToAdd = 1000;
+          else if (amountPaid >= 7500) creditsToAdd = 200;
+          else if (amountPaid >= 2500) creditsToAdd = 50;
+          else creditsToAdd = 1;
+
+          if (userId) {
+            const result = await handleUserCredits(userId, creditsToAdd);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ status: 'success', credits: creditsToAdd, total: result.credits }));
+          } else {
+            throw new Error('No User ID in metadata');
+          }
+        } else {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ status: 'failed', message: data.message || 'Verification failed' }));
+        }
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Internal verification failed' }));
+      }
+      return;
+    }
+
+    // 4. Paystack Webhook (Automatic Top-up)
+    if (req.method === 'POST' && req.url === '/api/paystack/webhook') {
+      setCorsHeaders(req, res);
+      const body = await getBody();
+      
+      // Paystack event verification (Basic)
+      const event = body.event;
+      if (event === 'charge.success') {
+        const data = body.data;
+        const userId = data.metadata?.user_id;
+        const amountPaid = data.amount / 100; // in Naira
+
+        if (userId) {
+          console.log(`💰 [PAYSTACK] Success for User ${userId}. Amount: ₦${amountPaid}`);
+          
+          // CRITICAL: Determine credits from amount
+          // Example: ₦2,000 = 10 credits, ₦5,000 = 30 credits, ₦10,000 = 100 credits
+          let creditsToAdd = 0;
+          if (amountPaid >= 10000) creditsToAdd = 100;
+          else if (amountPaid >= 5000) creditsToAdd = 30;
+          else if (amountPaid >= 2000) creditsToAdd = 10;
+          else creditsToAdd = 1; // Default fallback
+
+          const result = await handleUserCredits(userId, creditsToAdd);
+          if (result.success) {
+             console.log(`✅ [CREDITS] Added ${creditsToAdd} to user ${userId}. New total: ${result.credits}`);
+          }
+        }
+      }
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: 'webhook_processed' }));
       return;
     }
 
