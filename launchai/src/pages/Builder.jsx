@@ -90,7 +90,11 @@ function IdeaScaffoldModal({ onScaffold, onUseTemplate, onBlank, onCancel }) {
       onScaffold(components, parsed.name || idea.trim())
     } catch (err) {
       console.error('Scaffold error:', err)
-      setError('Could not parse AI response. Try rephrasing your idea.')
+      setError(err.message === 'Failed to fetch' || !err.message 
+        ? 'Network error. Please check your connection.'
+        : err.message.length < 100 
+          ? err.message 
+          : 'Could not parse AI response. Try rephrasing your idea.')
       setIsBuilding(false)
     }
   }
