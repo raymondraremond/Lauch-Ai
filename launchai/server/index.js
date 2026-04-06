@@ -105,7 +105,11 @@ const server = http.createServer(async (req, res) => {
   // --- Auth Middleware Helper ---
   const getUserIdFromToken = async (token) => {
     const supabaseUrl = process.env.VITE_SUPABASE_URL;
-    const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
+
+    // --- SMART FALLBACK ---
+    // If ANON_KEY is missing from Render dashboard, use SERVICE_ROLE_KEY (which is on Render)
+    const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+    
     if (!token) return null;
 
     try {
