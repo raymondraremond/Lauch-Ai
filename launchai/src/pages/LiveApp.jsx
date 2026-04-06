@@ -1,5 +1,12 @@
 import { callAI, getUserCredits } from '../lib/AIClient.js'
 import { AI_MODELS } from '../lib/AIConfig.js'
+import React, { useState, useEffect } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import {
+  Zap, Sparkles, Cloud, ArrowLeft, Loader2, MessageSquare,
+  ChevronDown, Check, UploadCloud
+} from 'lucide-react'
+import { getProjectById } from '../lib/ProjectStore.js'
 
 export default function LiveApp() {
   const { id } = useParams()
@@ -91,7 +98,11 @@ export default function LiveApp() {
           }
         })
 
-        // Call Backend AI
+        // Assemble parts array correctly before calling AI
+        const parts = [{ text: parsedPrompt }]
+        if (imagePart) parts.push(imagePart)
+
+        // Call Backend AI via secure proxy (Gemini)
         const data = await callAI({
           parts,
           model: AI_MODELS.DEFAULT_GENERATION

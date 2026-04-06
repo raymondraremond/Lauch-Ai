@@ -4,18 +4,21 @@ import { AI_MODELS } from '../lib/AIConfig.js'
 import { getGeminiKeys } from '../lib/ApiKeyManager.js'
 import { Bot, User, X, Image as ImageIcon, Loader, Sparkles, Send } from 'lucide-react'
 
-const SYSTEM_PROMPT = `You are the LaunchAI Copilot, a world-class AI developer.
-Your goal is to help users build sophisticated AI applications by adding components to their canvas.
+const SYSTEM_PROMPT = `You are the LaunchAI Copilot, a world-class AI developer and strategist.
+Your goal is to build full-scale, functional AI applications by generating multiple Action Tags in a single response.
 
-ACTION TAGS:
-- Add components: [ACTION:ADD, type:TYPE, label:LABEL, variableId:VAR_ID, systemPrompt:PROMPT]
+When a user asks to "build" an app, DO NOT just describe it. ACT immediately.
+1. Determine the necessary inputs (Text Input, File Upload).
+2. Add "Brain" components (AI Chat, Structured Output) with high-quality systemPrompts that reference the inputs using {{variableId}}.
+3. Add visualization (Charts, Weather Cards, API Status).
+
+ACTION TAG RULES:
+- Format: [ACTION:ADD, type:TYPE, label:LABEL, variableId:VAR_ID, systemPrompt:PROMPT]
 - TYPEs: text-input, textarea, toggle, dropdown, ai-chat, chart, weather-card, api-status, structured-result, file-upload
-- LOGICAL BINDING: Always assign a logical 'variableId' (e.g., 'user_query', 'document_file').
-- AI BLOCKS: For 'structured-result' or 'ai-chat', you can pre-configure the 'systemPrompt' using {{variableId}} syntax.
-- VISUAL ANALYSIS: If an image is provided, suggest the closest LaunchAI match.
-- Example: "I'll add a city input and a weather predictor. [ACTION:ADD, type:text-input, label:City, variableId:city] [ACTION:ADD, type:structured-result, label:Forecast, variableId:out, systemPrompt:Provide a weather forecast for {{city}}]"
+- BE AGGRESSIVE: Use 3-5 tags in one message to build the entire app structure.
+- QUALITY: Every "structured-result" MUST have a well-reasoned systemPrompt.
 
-Keep responses concise and focused on building. Don't explain too much, just act.`
+Example: "I'll build your Weather Analyzer now. I'm adding a city input, a specific weather display, and an AI intelligence block to explain the data. [ACTION:ADD, type:text-input, label:Enter City, variableId:city] [ACTION:ADD, type:weather-card, label:Current Weather, variableId:weather] [ACTION:ADD, type:structured-result, label:AI Weather Report, variableId:report, systemPrompt:Analyze weather for {{city}}. Provide travel advice.]"`
 
 const ChatWidget = forwardRef(({ placeholder = "Ask your AI copilot anything…", compact = false, onAction = () => {} }, ref) => {
   const [messages, setMessages] = useState([
@@ -108,7 +111,7 @@ const ChatWidget = forwardRef(({ placeholder = "Ask your AI copilot anything…"
       return
     }
 
-    await new Promise(r => setTimeout(r, 800))
+    await new Promise(r => setTimeout(r, 100))
     processReply(getDemoResponse(text), 'Demo')
   }
 
@@ -212,7 +215,26 @@ const ChatWidget = forwardRef(({ placeholder = "Ask your AI copilot anything…"
         <div ref={bottomRef} />
       </div>
 
-      <div className="p-4 bg-overlay border-t border-base">
+      <div className="p-4 bg-overlay border-t border-base relative">
+        {/* Quick Action Suggestions */}
+        {messages.length < 3 && (
+          <div className="flex gap-2 mb-3 overflow-x-auto pb-1 no-scrollbar scroll-smooth">
+            {[
+              { label: "Build Weather App ☁️", prompt: "Build a comprehensive Global Weather Tracker with city input and AI analysis" },
+              { label: "Lead Gen Form 📋", prompt: "Create a customer lead-generation form with name, email and an AI follow-up strategy box" },
+              { label: "Expense Tracker 📊", prompt: "Build an expense tracker with category dropdowns and a monthly analytics chart" }
+            ].map((suggest, i) => (
+              <button 
+                key={i} 
+                onClick={() => setInput(suggest.prompt)}
+                className="whitespace-nowrap px-3 py-1.5 rounded-full bg-void/50 border border-base text-[11px] text-secondary hover:text-accent hover:border-accent/40 transition-all shadow-sm"
+              >
+                {suggest.label}
+              </button>
+            ))}
+          </div>
+        )}
+        
         {uploadedImage && (
           <div className="mb-3 relative inline-block animate-fade-in">
             <img src={uploadedImage} className="w-16 h-16 rounded-lg object-cover border border-lit shadow-lg" alt="Upload preview" />

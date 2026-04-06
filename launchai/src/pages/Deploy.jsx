@@ -2,26 +2,33 @@ import React, { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar.jsx'
 import Sidebar from '../components/Sidebar.jsx'
-import { Rocket, CheckCircle, Globe, Share2, Copy, ArrowRight, ExternalLink, Loader } from 'lucide-react'
+import { Rocket, CheckCircle, Globe, Share2, Copy, ArrowRight, ExternalLink, Loader, Sparkles, MessageSquare } from 'lucide-react'
 import { getProjectById, saveProject } from '../lib/ProjectStore.js'
 
 export default function Deploy() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const id = searchParams.get('id')
-  
-  const [isDeploying, setIsDeploying] = useState(true)
+
+  const [showCritiqueGate, setShowCritiqueGate] = useState(true) // show gate first
+  const [isDeploying, setIsDeploying] = useState(false)
   const [copied, setCopied] = useState(false)
   const [project, setProject] = useState(null)
 
+  // Pre-load project name for the gate UI
   useEffect(() => {
+    if (id) getProjectById(id).then(p => { if (p) setProject(p) })
+  }, [id])
+
+  function startDeployment() {
+    setShowCritiqueGate(false)
+    setIsDeploying(true)
     if (id) {
       async function deployFlow() {
         try {
           const p = await getProjectById(id)
           if (p) {
             setProject(p)
-            // Simulate a real deployment delay then update status
             setTimeout(async () => {
               try {
                 await saveProject({ ...p, status: 'live' })
@@ -43,7 +50,7 @@ export default function Deploy() {
     } else {
       setIsDeploying(false)
     }
-  }, [id])
+  }
 
   const liveUrl = `${window.location.origin}/p/${id}`
 
@@ -52,6 +59,54 @@ export default function Deploy() {
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
+
+  // ── Critique Gate ──────────────────────────────────────────────────────────
+  if (showCritiqueGate) {
+    return (
+      <div className="min-h-screen bg-void font-body flex flex-col">
+        <Navbar minimal />
+        <Sidebar />
+        <main className="ml-[220px] pt-[76px] px-8 flex items-center justify-center min-h-screen">
+          <div className="max-w-[520px] w-full animate-fade-up">
+            <div className="card-premium p-10 text-center shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-accent/40 to-transparent" />
+              <div className="w-[64px] h-[64px] rounded-[16px] bg-gradient-to-br from-accent to-[#7c3aed] flex items-center justify-center mx-auto mb-6 shadow-lg shadow-accent/25">
+                <Sparkles size={28} className="text-white" />
+              </div>
+              <h1 className="font-display text-[26px] font-semibold text-primary mb-3 tracking-[-0.03em]">
+                Ready to ship{project?.name ? ` "${project.name}"` : ''}?
+              </h1>
+              <p className="font-body text-[14px] text-secondary leading-[1.7] mb-8 max-w-[380px] mx-auto">
+                Before you go live, an <strong className="text-primary font-medium">AI Critique</strong> can
+                catch market fit issues, UX gaps, and missed opportunities — before your users do.
+              </p>
+
+              <div className="space-y-3">
+                <button
+                  onClick={() => navigate(`/critique?prefill=${encodeURIComponent(project?.name || '')}`)}
+                  className="w-full btn-primary py-3 text-[14px] flex items-center justify-center gap-2"
+                >
+                  <MessageSquare size={16} /> Get an AI Critique first
+                  <span className="ml-1 font-mono text-[10px] bg-white/15 px-2 py-0.5 rounded-full uppercase tracking-wider">recommended</span>
+                </button>
+                <button
+                  onClick={startDeployment}
+                  className="w-full py-3 rounded-[8px] border border-base bg-raised text-[13px] text-secondary hover:text-primary hover:border-lit transition-all font-body"
+                >
+                  Deploy anyway →
+                </button>
+              </div>
+
+              <p className="mt-6 font-body text-[11px] text-text-muted">
+                Critiques take ~30 seconds and use 1–3 credits.
+              </p>
+            </div>
+          </div>
+        </main>
+      </div>
+    )
+  }
+  // ──────────────────────────────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-void font-body flex flex-col">
@@ -96,7 +151,7 @@ export default function Deploy() {
                   <div className="flex-1">
                     <h2 className="font-display text-[20px] font-semibold text-primary mb-1">Your project is live!</h2>
                     <p className="font-body text-[14px] text-secondary mb-6">
-                      Successfully deployed to the global edge network. Anyone with the link can now use your AI app.
+                      Successfully deployed. Anyone with the link can now use your AI app — powered by Gemini.
                     </p>
                     
                     <div className="flex items-stretch gap-2 mb-4">
@@ -156,8 +211,8 @@ export default function Deploy() {
                 <div className="flex-1">
                   <h4 className="font-body text-[13px] font-semibold text-primary mb-1 tracking-[-0.01em]">Next Steps</h4>
                   <p className="font-body text-[12px] text-secondary leading-[1.6]">
-                    You can now embed this widget on your own website, or use our API to integrate it directly into your existing workflow. 
-                    <button className="text-accent hover:underline ml-1">View documentation →</button>
+                    Share the link above with your users. Want deeper feedback on the product? 
+                    <button onClick={() => navigate('/critique')} className="text-accent hover:underline ml-1">Run a critique →</button>
                   </p>
                 </div>
               </div>

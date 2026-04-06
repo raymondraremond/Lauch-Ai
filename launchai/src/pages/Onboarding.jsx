@@ -43,7 +43,19 @@ export default function Onboarding() {
   ]
 
   function handleFinish() {
-    navigate('/dashboard')
+    // Pass everything the user told us to Auth so it's not lost
+    navigate('/auth', {
+      state: {
+        mode: 'signup',
+        prefillName: name,
+        prefillEmail: email,
+        onboardingData: { industry, goal, template },
+        // After signup, go directly to builder (not dashboard) with template context
+        redirectTo: template !== 'Blank Canvas'
+          ? `/builder?template=${encodeURIComponent(template)}`
+          : '/builder'
+      }
+    })
   }
 
   return (

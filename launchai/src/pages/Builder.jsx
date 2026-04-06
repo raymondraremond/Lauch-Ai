@@ -4,11 +4,13 @@ import Navbar from '../components/Navbar.jsx'
 import Sidebar from '../components/Sidebar.jsx'
 import ChatWidget from '../components/ChatWidget.jsx'
 import { getProjectById, saveProject, getBestPracticeTemplate } from '../lib/ProjectStore.js'
+import { callAI } from '../lib/AIClient.js'
+import { AI_MODELS } from '../lib/AIConfig.js'
 import {
   Type, AlignLeft, ToggleLeft, List, MessageSquare, BarChart2,
   Trash2, Move, Eye, Save, Rocket, GripVertical, Plus, Settings2,
   Check, Sparkles, ArrowRight, Cloud, Activity, FileText, Download, X,
-  ChevronUp, ChevronDown, UploadCloud
+  ChevronUp, ChevronDown, UploadCloud, Compass, Loader2, Wand2
 } from 'lucide-react'
 
 const PALETTE = [
@@ -23,6 +25,145 @@ const PALETTE = [
   { type: 'chart',       label: 'Chart',         icon: BarChart2,     preview: <div className="flex items-end gap-[4px] h-[32px]">{[60,40,80,50,90,70].map((h,i)=><div key={i} style={{height:`${h}%`}} className="flex-1 rounded-[2px] bg-accent/40" />)}</div> },
   { type: 'file-upload', label: 'File Upload',   icon: UploadCloud,   preview: <div className="p-2 border border-dashed border-secondary bg-overlay rounded-[8px] flex items-center justify-center gap-2"><UploadCloud size={14} className="text-secondary"/><span className="text-[10px] text-secondary">Drop files...</span></div> },
 ]
+
+// ─── Idea-to-Scaffold Modal ──────────────────────────────────────────────────
+const SCAFFOLD_SYSTEM_PROMPT = `You are a LaunchAI app scaffolder. Given a product idea description, output a JSON array of components to build the app.
+
+Rules:
+- Output ONLY a valid JSON array, no markdown, no explanation.
+- Each object must have: { "type", "label", "variableId", "systemPrompt" }
+- Types allowed: text-input, textarea, toggle, dropdown, file-upload, structured-result, ai-chat, chart, weather-card, api-status
+- Only structured-result and ai-chat need a systemPrompt.
+- Use {{variableId}} in systemPrompts to reference input values.
+- Build 3-6 components that form a complete, functional app.
+- Also output a "name" field (top-level, not in array) as the product name.
+
+Output format example:
+{ "name": "Invoice Analyzer", "components": [{"type":"file-upload","label":"Upload Invoice","variableId":"invoice_file","systemPrompt":""},{"type":"structured-result","label":"AI Analysis","variableId":"analysis","systemPrompt":"Analyze the invoice at {{invoice_file}} and extract: vendor, total, line items, due date."}] }`
+
+function IdeaScaffoldModal({ onScaffold, onUseTemplate, onBlank, onCancel }) {
+  const [idea, setIdea] = useState('')
+  const [isBuilding, setIsBuilding] = useState(false)
+  const [error, setError] = useState(null)
+
+  const IDEA_EXAMPLES = [
+    'A customer support bot for a SaaS tool',
+    'An invoice analyzer that extracts data from PDFs',
+    'A lead qualification form with AI scoring',
+    'A social media post generator',
+    'A legal document summarizer',
+  ]
+
+  async function handleBuildFromIdea() {
+    if (!idea.trim()) return
+    setIsBuilding(true)
+    setError(null)
+    try {
+      const data = await callAI({
+        parts: [
+          { text: SCAFFOLD_SYSTEM_PROMPT },
+          { text: `Product idea: ${idea.trim()}` }
+        ],
+        model: AI_MODELS.DEFAULT_GENERATION
+      })
+      const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+      // Strip markdown code fences if present
+      const clean = raw.replace(/```json?/gi, '').replace(/```/g, '').trim()
+      const parsed = JSON.parse(clean)
+      const components = (parsed.components || parsed).map((c, i) => ({
+        id: Date.now().toString() + i,
+        type: c.type,
+        label: c.label,
+        variableId: c.variableId || `var_${i}`,
+        systemPrompt: c.systemPrompt || ''
+      }))
+      onScaffold(components, parsed.name || idea.trim())
+    } catch (err) {
+      console.error('Scaffold error:', err)
+      setError('Could not parse AI response. Try rephrasing your idea.')
+      setIsBuilding(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-sm bg-void/80">
+      <div className="card-premium p-8 max-w-[560px] w-full shadow-2xl animate-in zoom-in-95 duration-300">
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-[36px] h-[36px] rounded-[10px] bg-gradient-to-br from-accent to-[#7c3aed] flex items-center justify-center shadow-lg shadow-accent/25">
+            <Wand2 size={18} className="text-white" />
+          </div>
+          <div>
+            <h2 className="font-display text-[22px] font-semibold text-primary tracking-[-0.03em]">What do you want to build?</h2>
+            <p className="font-body text-[13px] text-secondary">Describe your idea — AI will scaffold the whole app for you.</p>
+          </div>
+        </div>
+
+        {/* Idea Input */}
+        <div className="mt-6">
+          <textarea
+            className="input w-full min-h-[100px] resize-none text-[14px] leading-[1.65] bg-void/50"
+            placeholder="e.g. A customer support bot that reads uploaded documents and answers questions about them"
+            value={idea}
+            onChange={e => setIdea(e.target.value)}
+            disabled={isBuilding}
+            onKeyDown={e => { if (e.key === 'Enter' && e.metaKey) handleBuildFromIdea() }}
+          />
+        </div>
+
+        {/* Quick Examples */}
+        {!isBuilding && (
+          <div className="flex flex-wrap gap-2 mt-3">
+            {IDEA_EXAMPLES.map((ex, i) => (
+              <button
+                key={i}
+                onClick={() => setIdea(ex)}
+                className="font-body text-[11px] px-[10px] py-[5px] rounded-full border border-base bg-raised text-secondary hover:border-accent/40 hover:text-accent transition-all"
+              >
+                {ex}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {error && <p className="mt-3 text-[12px] text-danger font-body">{error}</p>}
+
+        {/* Actions */}
+        <div className="mt-6 flex flex-col gap-3">
+          <button
+            onClick={handleBuildFromIdea}
+            disabled={!idea.trim() || isBuilding}
+            className={`btn-primary w-full py-3 text-[14px] flex items-center justify-center gap-2 ${
+              !idea.trim() || isBuilding ? 'opacity-50 cursor-not-allowed hover:translate-y-0' : ''
+            }`}
+          >
+            {isBuilding
+              ? <><Loader2 size={16} className="animate-spin" /> Building your app&hellip;</>
+              : <><Sparkles size={16} /> Build this app <ArrowRight size={14} /></>}
+          </button>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onUseTemplate}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-[8px] border border-base bg-raised text-[13px] text-secondary hover:border-lit hover:text-primary transition-all"
+            >
+              Use Template
+            </button>
+            <button
+              onClick={onBlank}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-[8px] border border-base bg-raised text-[13px] text-secondary hover:border-lit hover:text-primary transition-all"
+            >
+              Blank Canvas
+            </button>
+          </div>
+        </div>
+
+        <button onClick={onCancel} className="mt-6 text-[12px] text-text-muted hover:text-secondary block mx-auto font-body transition-colors">Cancel</button>
+      </div>
+    </div>
+  )
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 function InteractivePreview({ comp, palette }) {
   const [val, setVal] = useState('');
@@ -201,16 +342,19 @@ export default function Builder() {
     }
   }, [dragCounter])
 
-  function downloadProjectCode() {
+  function downloadProjectCode(returnAsString = false) {
     const code = `
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Zap, Send, MessageSquare, Cloud, Activity, BarChart2, 
-  CheckCircle, ChevronDown, UploadCloud, FileText, Sparkles, X, Eye
+  CheckCircle, ChevronDown, UploadCloud, FileText, Sparkles, X, Eye,
+  Type, AlignLeft, ToggleLeft, List
 } from 'lucide-react';
 
 /**
- * \${projectName} - Generated by LaunchAI
+ * ${projectName} - Generated by LaunchAI
+ * Copy this content into a .jsx file in your React project.
+ * Ensure 'lucide-react' is installed.
  */
 
 export default function App() {
@@ -218,74 +362,231 @@ export default function App() {
   const [fileData, setFileData] = useState({});
   const [outputs, setOutputs] = useState({});
   const [isProcessing, setIsProcessing] = useState(false);
+  const [status, setStatus] = useState('idle');
+
+  // SET YOUR KEY HERE
   const API_KEY = "YOUR_GEMINI_API_KEY";
 
-  const components = \${JSON.stringify(components, null, 2)};
+  const components = ${JSON.stringify(components, null, 2)};
 
   const handleFileUpload = (variableId, e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setFileData(prev => ({ ...prev, [variableId]: { mime_type: file.type, data: event.target.result.split(',')[1], name: file.name } }));
-      };
-      reader.readAsDataURL(file);
-    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setFileData(prev => ({ 
+        ...prev, 
+        [variableId]: { 
+          mime_type: file.type, 
+          data: event.target.result.split(',')[1], 
+          name: file.name 
+        } 
+      }));
+    };
+    reader.readAsDataURL(file);
   };
 
   async function handleRun() {
-    if (API_KEY === "YOUR_GEMINI_API_KEY") { alert("Please set API key!"); return; }
+    if (API_KEY === "YOUR_GEMINI_API_KEY") { 
+      alert("Please set your Gemini API Key in the code first!"); 
+      return; 
+    }
     setIsProcessing(true);
+    setStatus('processing');
     try {
       const newOutputs = { ...outputs };
-      for (const block of components.filter(c => c.systemPrompt)) {
-        let promptText = block.systemPrompt;
+      const aiBlocks = components.filter(c => c.type === 'structured-result' || c.type === 'ai-chat');
+      
+      for (const block of aiBlocks) {
+        let promptText = block.systemPrompt || "Analyze the context.";
         const inlineData = [];
+        
         components.forEach(c => {
           if (!c.variableId) return;
           const placeholder = \`{{\${c.variableId}}}\`;
           if (promptText.includes(placeholder)) {
             if (fileData[c.variableId]) {
-              inlineData.push({ inline_data: { mime_type: fileData[c.variableId].mime_type, data: fileData[c.variableId].data } });
-              promptText = promptText.replace(placeholder, '[Attached Image]');
+              inlineData.push({ 
+                inline_data: { 
+                  mime_type: fileData[c.variableId].mime_type, 
+                  data: fileData[c.variableId].data 
+                } 
+              });
+              promptText = promptText.replace(placeholder, '[Attached File]');
             } else {
               promptText = promptText.replace(placeholder, values[c.id] || "");
             }
           }
         });
+
         const res = await fetch(\`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=\${API_KEY}\`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: promptText }, ...inlineData] }] })
+          body: JSON.stringify({ 
+            contents: [{ 
+              parts: [{ text: promptText }, ...inlineData] 
+            }],
+            generationConfig: { maxOutputTokens: 1024 }
+          })
         });
         const data = await res.json();
-        newOutputs[block.id] = data.candidates?.[0]?.content?.parts?.[0]?.text || "Error";
+        newOutputs[block.id] = data.candidates?.[0]?.content?.parts?.[0]?.text || "Error communicating with AI.";
       }
       setOutputs(newOutputs);
-    } catch (e) { alert("Error: " + e.message); } finally { setIsProcessing(false); }
+      setStatus('success');
+    } catch (e) { 
+      console.error(e);
+      alert("Error: " + e.message); 
+    } finally { 
+      setIsProcessing(false); 
+    }
   }
 
   return (
-    <div className="min-h-screen bg-black text-white p-8">
-      <div className="max-w-2xl mx-auto space-y-8">
-        <h1 className="text-3xl font-bold">\${projectName}</h1>
-        <div className="bg-neutral-900 border border-white/5 rounded-3xl p-8 space-y-6">
+    <div className="min-h-screen bg-[#0a0a0b] text-[#edeff2] p-4 md:p-12 font-sans selection:bg-blue-500/30">
+      <div className="max-w-3xl mx-auto space-y-10">
+        <header className="flex items-center justify-between border-b border-white/5 pb-8">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-white mb-2">${projectName}</h1>
+            <p className="text-sm text-neutral-500 font-medium uppercase tracking-wider">AI Application • Generated by LaunchAI</p>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-full">
+            <div className={\`w-2 h-2 rounded-full \${status === 'success' ? 'bg-green-500' : 'bg-blue-500'}\`} />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">\${status}</span>
+          </div>
+        </header>
+
+        <section className="bg-[#141417] border border-white/5 rounded-[32px] p-8 md:p-10 shadow-2xl space-y-8">
           {components.map(c => (
-            <div key={c.id} className="space-y-2">
-              <label className="text-xs font-bold text-neutral-500 uppercase">\${c.label}</label>
-              {c.type === 'text-input' && <input className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3" onChange={e => setValues({...values, [c.id]: e.target.value})} />}
-              {c.type === 'file-upload' && <input type="file" onChange={e => handleFileUpload(c.variableId, e)} />}
-              {c.systemPrompt && <div className="p-6 bg-black/60 border border-white/10 rounded-2xl min-h-[100px] whitespace-pre-wrap">{outputs[c.id] || "Output..."}</div>}
+            <div key={c.id} className="group space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-bold text-neutral-500 uppercase tracking-[0.1em]">\${c.label}</label>
+                {values[c.id] && <CheckCircle size={12} className="text-green-500 opacity-50" />}
+              </div>
+
+              {/* Text Inputs */}
+              {(c.type === 'text-input' || c.type === 'textarea') && (
+                c.type === 'text-input' ? (
+                  <input 
+                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-blue-500/50 transition-all placeholder:text-neutral-700" 
+                    placeholder="Enter value..."
+                    onChange={e => setValues({...values, [c.id]: e.target.value})} 
+                  />
+                ) : (
+                  <textarea 
+                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-blue-500/50 transition-all min-h-[120px] placeholder:text-neutral-700" 
+                    placeholder="Describe more details..."
+                    onChange={e => setValues({...values, [c.id]: e.target.value})} 
+                  />
+                )
+              )}
+
+              {/* Selection & Toggles */}
+              {c.type === 'toggle' && (
+                <button 
+                  onClick={() => setValues({...values, [c.id]: !values[c.id]})}
+                  className={\`w-14 h-7 rounded-full p-1 transition-colors \${values[c.id] ? 'bg-blue-600' : 'bg-neutral-800'}\`}
+                >
+                  <div className={\`w-5 h-5 bg-white rounded-full transition-transform \${values[c.id] ? 'translate-x-7' : 'translate-x-0'}\`} />
+                </button>
+              )}
+
+              {c.type === 'dropdown' && (
+                <select className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-white hover:border-white/20 transition-all cursor-pointer outline-none">
+                  <option>Select Option...</option>
+                  <option>Option 1</option>
+                  <option>Option 2</option>
+                </select>
+              )}
+
+              {/* Displays */}
+              {c.type === 'weather-card' && (
+                <div className="p-6 bg-gradient-to-br from-blue-600/10 to-transparent border border-blue-500/20 rounded-2xl flex items-center justify-between">
+                  <div className="flex flex-col">
+                    <span className="text-3xl font-bold text-white">24°C</span>
+                    <span className="text-xs text-neutral-400 capitalize tracking-wide">Dynamic Weather Active</span>
+                  </div>
+                  <Cloud size={40} className="text-blue-500 opacity-80" />
+                </div>
+              )}
+
+              {c.type === 'api-status' && (
+                <div className="flex items-center gap-3 p-4 bg-green-500/5 border border-green-500/10 rounded-2xl">
+                  <Activity size={16} className="text-green-500" />
+                  <span className="text-xs font-bold text-green-500 uppercase tracking-widest">Active Backend Node</span>
+                </div>
+              )}
+
+              {c.type === 'chart' && (
+                <div className="p-6 bg-black/20 border border-white/5 rounded-2xl h-[160px] flex items-end gap-2">
+                  {[40, 20, 70, 50, 90, 60, 80].map((h, i) => (
+                    <div key={i} style={{ height: \`\${h}%\` }} className="flex-1 bg-blue-500/30 rounded-t-lg border-t border-blue-500/40" />
+                  ))}
+                </div>
+              )}
+
+              {/* Data Inputs */}
+              {c.type === 'file-upload' && (
+                <div className="relative group">
+                  <input 
+                    type="file" 
+                    className="absolute inset-0 opacity-0 cursor-pointer z-10" 
+                    onChange={e => handleFileUpload(c.variableId, e)} 
+                  />
+                  <div className="w-full bg-black/40 border border-dashed border-white/10 rounded-2xl px-6 py-10 text-center group-hover:border-blue-500/50 transition-all">
+                    <UploadCloud size={32} className="mx-auto mb-4 text-neutral-500" />
+                    <p className="text-sm font-medium text-neutral-300">{fileData[c.variableId]?.name || 'Drop files or click to upload'}</p>
+                    <p className="text-[10px] text-neutral-600 mt-1 uppercase tracking-widest">Supports images & PDFs</p>
+                  </div>
+                </div>
+              )}
+
+              {/* AI Logic Blocks */}
+              {(c.type === 'structured-result' || c.type === 'ai-chat') && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-blue-500">
+                    <Sparkles size={14} />
+                    <span className="text-[10px] font-bold uppercase tracking-[0.2em]">{c.type === 'ai-chat' ? 'Conversation Flow' : 'Intelligence Block'}</span>
+                  </div>
+                  <div className="p-8 bg-black/60 border border-white/5 rounded-[24px] min-h-[160px] text-[15px] leading-relaxed text-neutral-300 whitespace-pre-wrap shadow-inner relative overflow-hidden">
+                    {isProcessing ? (
+                      <div className="space-y-3">
+                        <div className="h-3 w-3/4 bg-white/5 rounded-full animate-pulse" />
+                        <div className="h-3 w-1/2 bg-white/5 rounded-full animate-pulse" />
+                      </div>
+                    ) : (
+                      outputs[c.id] || <span className="opacity-20 italic font-medium">Awaiting analysis...</span>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           ))}
-          <button onClick={handleRun} disabled={isProcessing} className="w-full bg-blue-600 py-4 rounded-2xl font-bold">{isProcessing ? "Processing..." : "Run AI"}</button>
-        </div>
+
+          {/* Action Button */}
+          <button 
+            onClick={handleRun} 
+            disabled={isProcessing} 
+            className="w-full group relative flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-500 text-white py-6 rounded-2xl font-bold transition-all hover:shadow-[0_0_40px_rgba(37,99,235,0.4)] disabled:opacity-50"
+          >
+            {isProcessing ? (
+              <Activity size={18} className="animate-spin" />
+            ) : (
+              <>
+                <Zap size={18} className="transition-transform group-hover:scale-125" fill="currentColor" />
+                <span>Run Application</span>
+              </>
+            )}
+          </button>
+        </footer>
       </div>
     </div>
   );
 }
 `.trim();
+
+    if (returnAsString) return code;
+    
     const blob = new Blob([code], { type: 'text/javascript' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url;
@@ -367,7 +668,26 @@ export default function App() {
                 {isSaving && <span className="font-mono text-[9px] text-text-muted uppercase animate-pulse">Saving...</span>}
                 {saveSuccess && <span className="font-mono text-[9px] text-success uppercase flex items-center gap-1"><Check size={10}/> Saved</span>}
               </div>
+              <button 
+                onClick={() => {
+                  const code = downloadProjectCode(true); // Helper to get string only
+                  navigator.clipboard.writeText(code);
+                  setSaveSuccess(true);
+                  setTimeout(() => setSaveSuccess(false), 2000);
+                }} 
+                className="flex items-center gap-[6px] text-[13px] px-[12px] py-[6px] rounded-[6px] border border-base bg-white/5 text-secondary hover:text-white transition-all">
+                <FileText size={14} /> <span className="hidden sm:inline">Copy Code</span>
+              </button>
               <button onClick={downloadProjectCode} className="flex items-center gap-[6px] text-[13px] px-[12px] py-[6px] rounded-[6px] border border-base text-secondary hover:text-primary bg-raised hover:border-lit transition-colors"><Download size={14} /> <span className="hidden sm:inline">Export</span></button>
+              {projectIdState && (
+                <button
+                  onClick={() => navigate(`/companion?projectId=${projectIdState}&projectName=${encodeURIComponent(projectName)}`)}
+                  title="Get help with this project in AI Companion"
+                  className="flex items-center gap-[6px] text-[13px] px-[12px] py-[6px] rounded-[6px] border border-accent/30 bg-accent-dim text-accent hover:bg-accent/15 transition-colors"
+                >
+                  <Compass size={14} /> <span className="hidden sm:inline">Get help</span>
+                </button>
+              )}
               <button onClick={() => setShowPreview(v => !v)} className={`flex items-center gap-[6px] text-[13px] px-[12px] py-[6px] rounded-[6px] border transition-colors duration-150 ${showPreview ? 'bg-accent-dim border-accent/40 text-accent font-medium' : 'border-base text-secondary hover:text-primary bg-raised hover:border-lit'}`}><Eye size={14} /> <span className="hidden sm:inline">{showPreview ? 'Edit' : 'Preview'}</span></button>
               <button onClick={handleSave} disabled={isSaving} className="flex items-center gap-[6px] text-[13px] px-[12px] py-[6px] rounded-[6px] border border-base bg-raised text-secondary hover:text-primary hover:border-lit transition-colors duration-150 disabled:opacity-50"><Save size={14} /> <span className="hidden sm:inline">Save</span></button>
               <button onClick={() => { handleSave().then(s => { if (s) navigate(`/deploy?id=${s.id}`) }) }} className="btn-primary text-[13px] px-[16px] py-[6px] !rounded-[6px]"><Rocket size={14} /> <span className="hidden sm:inline">Deploy</span></button>
@@ -379,9 +699,17 @@ export default function App() {
               <div className="card min-h-[500px] relative">
                 <p className="font-mono text-[10px] tracking-[0.1em] text-text-muted mb-[32px] text-center pt-[4px] uppercase">App Preview Canvas</p>
                 {components.length === 0 ? (
-                  <div className="text-center py-[64px] text-text-muted">
-                    <Plus size={32} className="mx-auto mb-[16px] opacity-20" />
-                    <p className="font-body text-[14px]">Add components from the left panel</p>
+                  <div className="text-center py-[80px] px-8">
+                    <div className="w-16 h-16 rounded-3xl bg-accent/10 border border-accent/20 flex items-center justify-center mx-auto mb-6">
+                      <Sparkles size={32} className="text-accent animate-pulse" />
+                    </div>
+                    <h3 className="font-display text-xl font-bold text-primary mb-2">Your Canvas is Ready</h3>
+                    <p className="text-secondary text-sm max-w-sm mx-auto mb-8 leading-relaxed">
+                      Ask the <b>AI Copilot</b> on the right to build your app for you, or drag components from the left panel manually.
+                    </p>
+                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-raised border border-base rounded-full text-[12px] text-text-muted italic">
+                      <MessageSquare size={12} /> Try: "Build a weather app with AI analysis"
+                    </div>
                   </div>
                 ) : (
                   <div className="space-y-[12px]">
@@ -460,22 +788,16 @@ export default function App() {
       </div>
 
       {showTemplateModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-sm bg-void/60">
-          <div className="card-premium p-8 max-w-[480px] w-full shadow-2xl animate-in zoom-in-95 duration-300">
-            <h2 className="font-display text-[24px] font-semibold text-primary mb-2">Create New AI App</h2>
-            <div className="space-y-3 mt-6">
-              <button onClick={handleUseTemplate} className="w-full flex items-center justify-between p-4 rounded-[10px] bg-accent/10 border border-accent/30 hover:bg-accent/15 transition-all text-left">
-                <div><p className="font-body font-semibold text-white text-[14px]">Best Practice Template</p></div>
-                <ArrowRight size={16} className="text-accent" />
-              </button>
-              <button onClick={handleStartBlank} className="w-full flex items-center justify-between p-4 rounded-[10px] bg-raised border border-base hover:border-lit transition-all text-left">
-                <div><p className="font-body font-semibold text-primary text-[14px]">Blank Canvas</p></div>
-                <ArrowRight size={16} className="text-secondary" />
-              </button>
-            </div>
-            <button onClick={() => navigate('/dashboard')} className="mt-8 text-[13px] text-text-muted hover:text-secondary block mx-auto font-medium">Cancel</button>
-          </div>
-        </div>
+        <IdeaScaffoldModal
+          onScaffold={(comps, name) => {
+            setComponents(comps)
+            setProjectName(name)
+            setShowTemplateModal(false)
+          }}
+          onUseTemplate={handleUseTemplate}
+          onBlank={handleStartBlank}
+          onCancel={() => navigate('/dashboard')}
+        />
       )}
     </div>
   )

@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import Navbar from '../components/Navbar.jsx'
 import Sidebar from '../components/Sidebar.jsx'
 import CompanionResults from '../components/CompanionResults.jsx'
@@ -10,7 +10,7 @@ import {
   Upload, X, FileText, Image, Sparkles, Search,
   Wand2, Lightbulb, ListOrdered, Flag, Loader,
   ArrowRight, Info, ChevronRight, Clock, Trash2,
-  History, ChevronDown, Eye
+  History, ChevronDown, Eye, Compass
 } from 'lucide-react'
 
 const MODE_ICONS = {
@@ -31,6 +31,10 @@ const MODE_DESCRIPTIONS = {
 
 export default function Companion() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const linkedProjectId = searchParams.get('projectId')
+  const linkedProjectName = searchParams.get('projectName')
+
   const fileInputRef = useRef(null)
   const textareaRef = useRef(null)
 
@@ -237,6 +241,20 @@ export default function Companion() {
                   <h1 className="font-display text-[28px] font-semibold text-primary tracking-[-0.03em] leading-tight">
                     AI Build Companion
                   </h1>
+                  {linkedProjectName && (
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <Compass size={11} className="text-accent" />
+                      <span className="font-mono text-[10px] tracking-[0.05em] uppercase text-accent">
+                        Context: {decodeURIComponent(linkedProjectName)}
+                      </span>
+                      <button
+                        onClick={() => navigate('/builder?id=' + linkedProjectId)}
+                        className="font-body text-[10px] text-text-muted hover:text-secondary transition-colors ml-1 underline"
+                      >
+                        Back to project
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 

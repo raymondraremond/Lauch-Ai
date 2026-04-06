@@ -15,19 +15,20 @@ export default function Auth() {
   const { user, signIn, signUp, signInWithGoogle, signInWithGitHub, resetPassword } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const from = location.state?.from?.pathname || '/dashboard'
+  
+  // Read onboarding handoff data
+  const onboardingState = location.state
+  const redirectTo = onboardingState?.redirectTo || location.state?.from?.pathname || '/dashboard'
 
-  // Auto-redirect if already logged in (important for social auth callback)
+  // Auto-redirect if already logged in
   useEffect(() => {
-    if (user) {
-      navigate(from, { replace: true })
-    }
-  }, [user, navigate, from])
+    if (user) navigate(redirectTo, { replace: true })
+  }, [user, navigate, redirectTo])
 
   // View state: 'login' | 'signup' | 'forgot' | 'sent'
   const isAuthCallback = window.location.hash.includes('access_token=') || window.location.hash.includes('error=')
-  const [view, setView] = useState('login')
-  const [email, setEmail] = useState('')
+  const [view, setView] = useState(onboardingState?.mode || 'login')
+  const [email, setEmail] = useState(onboardingState?.prefillEmail || '')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -43,11 +44,11 @@ export default function Auth() {
       if (view === 'login') {
         const { error } = await signIn({ email, password })
         if (error) throw error
-        navigate(from, { replace: true })
+        navigate(redirectTo, { replace: true })
       } else if (view === 'signup') {
         const { error } = await signUp({ email, password })
         if (error) throw error
-        setMessage('Check your email to confirm your account!')
+        setMessage('Check your email to confirm your account, then head to your builder!')
         setView('sent')
       } else if (view === 'forgot') {
         const { error } = await resetPassword(email)
