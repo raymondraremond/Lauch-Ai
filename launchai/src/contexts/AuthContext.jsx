@@ -42,22 +42,31 @@ export const AuthProvider = ({ children }) => {
     }, 10000)
 
     // 1. Get initial session
-    supabase.auth.getSession().then(async ({ data: { session: existingSession } }) => {
+    supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
+      console.log('🔍 [AUTH PROVIDER] getSession response received.')
+      
       if (existingSession) {
         console.log('✅ [AUTH PROVIDER] Found existing session.')
         setSession(existingSession)
         setUser(existingSession.user)
-        await fetchProfile(existingSession.user.id)
+        fetchProfile(existingSession.user.id) // Background fetch
       } else {
         console.log('ℹ️ [AUTH PROVIDER] No session found.')
       }
       
+      // RELEASE LOADING IMMEDIATELY
       setLoading(false)
-      if (loadingTimeout.current) clearTimeout(loadingTimeout.current)
+      if (loadingTimeout.current) {
+        clearTimeout(loadingTimeout.current)
+        loadingTimeout.current = null
+      }
     }).catch(err => {
       console.error('❌ [AUTH PROVIDER] getSession failed:', err.message)
       setLoading(false)
-      if (loadingTimeout.current) clearTimeout(loadingTimeout.current)
+      if (loadingTimeout.current) {
+        clearTimeout(loadingTimeout.current)
+        loadingTimeout.current = null
+      }
     })
 
     // 2. Listen for auth changes
@@ -69,8 +78,15 @@ export const AuthProvider = ({ children }) => {
         const currentUser = currentSession?.user ?? null
         setUser(currentUser)
 
+        // RELEASE LOADING IMMEDIATELY as we have an event
+        setLoading(false)
+        if (loadingTimeout.current) {
+          clearTimeout(loadingTimeout.current)
+          loadingTimeout.current = null
+        }
+
         if (currentUser) {
-          await fetchProfile(currentUser.id)
+          fetchProfile(currentUser.id) // Background fetch
         } else {
           setProfile(null)
         }
@@ -78,12 +94,6 @@ export const AuthProvider = ({ children }) => {
         const hashHasToken = window.location.hash.includes('access_token=')
         if (event === 'SIGNED_IN' && hashHasToken) {
           window.history.replaceState(null, '', window.location.pathname + window.location.search)
-        }
-
-        setLoading(false)
-        if (loadingTimeout.current) {
-          clearTimeout(loadingTimeout.current)
-          loadingTimeout.current = null
         }
       }
     )
