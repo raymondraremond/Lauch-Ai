@@ -40,7 +40,7 @@ export const AuthProvider = ({ children }) => {
     const timer = setTimeout(() => {
       console.warn('🚨 [AUTH PROVIDER] Loading timed out — forcing ready state')
       setLoading(false)
-    }, 6000)
+    }, 10000)
 
     let subscription = null
 
@@ -71,8 +71,8 @@ export const AuthProvider = ({ children }) => {
             window.history.replaceState(null, '', window.location.pathname + window.location.search)
           }
 
-          if (!initialized.current) {
-            console.log('✅ [AUTH PROVIDER] Initialized via onAuthStateChange')
+          if (event === 'TOKEN_REFRESHED' || !initialized.current) {
+            console.log(`✅ [AUTH PROVIDER] Auth event ${event} - clearing loading state`)
             clearTimeout(timer)
             initialized.current = true
             setLoading(false)
