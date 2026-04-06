@@ -107,11 +107,25 @@ const server = http.createServer(async (req, res) => {
     const supabaseUrl = process.env.VITE_SUPABASE_URL;
     const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
     if (!token) return null;
-    const res = await fetch(`${supabaseUrl}/auth/v1/user`, {
-      headers: { 'apikey': supabaseKey, 'Authorization': token }
-    });
-    const user = await res.json();
-    return user?.id || null;
+
+    try {
+      console.log(`[AUTH] Validating token against: ${supabaseUrl}/auth/v1/user`);
+      const res = await fetch(`${supabaseUrl}/auth/v1/user`, {
+        headers: { 'apikey': supabaseKey, 'Authorization': token }
+      });
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error(`[AUTH] Supabase validation failed (${res.status}):`, errorText);
+        return null;
+      }
+
+      const user = await res.json();
+      return user?.id || null;
+    } catch (err) {
+      console.error('[AUTH] Critical fetch error during validation:', err.message);
+      return null;
+    }
   };
 
   if (req.method === 'GET' && (req.url === '/' || req.url === '')) {

@@ -1,7 +1,14 @@
+import { useState, useEffect } from 'react'
 import { getGeminiKeys, saveGeminiKeys } from '../lib/ApiKeyManager.js'
 import { getUserCredits } from '../lib/AIClient.js'
 import { useAuth } from '../contexts/AuthContext'
-import { Sparkles, CreditCard, ChevronRight, Zap } from 'lucide-react'
+import Navbar from '../components/Navbar'
+import Sidebar from '../components/Sidebar'
+import DiagnosticTool from '../components/DiagnosticTool'
+import { 
+  Sparkles, CreditCard, ChevronRight, Zap, Key, Plus, X, 
+  CheckCircle, XCircle, Trash2, Shield, Info, ArrowRight 
+} from 'lucide-react'
 
 export default function SettingsPage() {
   const [geminiKeys, setGeminiKeys] = useState([])
@@ -247,6 +254,9 @@ export default function SettingsPage() {
                 </button>
               </div>
             </div>
+
+            {/* Diagnostic Card */}
+            <DiagnosticTool />
 
             {/* Privacy Card */}
             <div className="companion-card p-4 flex items-start gap-4 animate-fade-up" style={{ animationDelay: '200ms' }}>
