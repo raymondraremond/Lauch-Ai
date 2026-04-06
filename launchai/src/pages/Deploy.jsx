@@ -66,7 +66,7 @@ export default function Deploy() {
       <div className="min-h-screen bg-void font-body flex flex-col">
         <Navbar minimal />
         <Sidebar />
-        <main className="ml-[220px] pt-[76px] px-8 flex items-center justify-center min-h-screen">
+        <main className="lg:ml-[220px] pt-[76px] px-4 md:px-8 flex items-center justify-center min-h-screen transition-all duration-300">
           <div className="max-w-[520px] w-full animate-fade-up">
             <div className="card-premium p-10 text-center shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-accent/40 to-transparent" />
@@ -113,7 +113,7 @@ export default function Deploy() {
       <Navbar minimal />
       <Sidebar />
 
-      <main className="ml-[220px] pt-[76px] px-8 py-8 flex flex-col min-h-screen">
+      <main className="lg:ml-[220px] pt-[76px] px-4 md:px-8 py-8 flex flex-col min-h-screen transition-all duration-300">
         <div className="max-w-[800px] mx-auto w-full">
           <div className="mb-[32px] animate-fade-up">
             <h1 className="font-display text-[28px] font-semibold text-primary mb-1 tracking-[-0.03em]">Deployment</h1>

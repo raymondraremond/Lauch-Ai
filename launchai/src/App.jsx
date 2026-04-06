@@ -2,6 +2,7 @@ import { Suspense, lazy } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import Landing from './pages/Landing.jsx'
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx'
+import { MobileMenuProvider } from './contexts/MobileMenuContext.jsx'
 import AuthCallbackPage from './pages/AuthCallbackPage.jsx'
 
 const Auth = lazy(() => import('./pages/Auth.jsx'))
@@ -70,33 +71,35 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            <Route path="/"            element={<Landing />} />
-            <Route path="/auth"        element={<Auth />} />
-            <Route path="/auth/callback" element={<AuthCallbackPage />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            
-            {/* Public/Hybrid Routes */}
-            <Route path="/onboarding"  element={<Onboarding />} />
-            <Route path="/privacy"     element={<InfoPage />} />
-            <Route path="/terms"       element={<InfoPage />} />
-            <Route path="/changelog"   element={<InfoPage />} />
-            <Route path="/critique"    element={<CritiquePage />} />
-            <Route path="/p/:id"       element={<LiveApp />} />
+        <MobileMenuProvider>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route path="/"            element={<Landing />} />
+              <Route path="/auth"        element={<Auth />} />
+              <Route path="/auth/callback" element={<AuthCallbackPage />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              
+              {/* Public/Hybrid Routes */}
+              <Route path="/onboarding"  element={<Onboarding />} />
+              <Route path="/privacy"     element={<InfoPage />} />
+              <Route path="/terms"       element={<InfoPage />} />
+              <Route path="/changelog"   element={<InfoPage />} />
+              <Route path="/critique"    element={<CritiquePage />} />
+              <Route path="/p/:id"       element={<LiveApp />} />
 
-            {/* Private Routes */}
-            <Route path="/dashboard"   element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/builder"     element={<ProtectedRoute><Builder /></ProtectedRoute>} />
-            <Route path="/copilot"     element={<ProtectedRoute><Copilot /></ProtectedRoute>} />
-            <Route path="/companion"   element={<ProtectedRoute><Companion /></ProtectedRoute>} />
-            <Route path="/settings"    element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-            <Route path="/deploy"      element={<ProtectedRoute><Deploy /></ProtectedRoute>} />
+              {/* Private Routes */}
+              <Route path="/dashboard"   element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/builder"     element={<ProtectedRoute><Builder /></ProtectedRoute>} />
+              <Route path="/copilot"     element={<ProtectedRoute><Copilot /></ProtectedRoute>} />
+              <Route path="/companion"   element={<ProtectedRoute><Companion /></ProtectedRoute>} />
+              <Route path="/settings"    element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+              <Route path="/deploy"      element={<ProtectedRoute><Deploy /></ProtectedRoute>} />
 
-            {/* Catch-all */}
-            <Route path="*"            element={<Navigate to="/" replace />} />
-          </Routes>
-        </Suspense>
+              {/* Catch-all */}
+              <Route path="*"            element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
+        </MobileMenuProvider>
       </AuthProvider>
     </BrowserRouter>
   )

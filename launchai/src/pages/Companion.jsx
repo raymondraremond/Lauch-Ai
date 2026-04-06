@@ -258,7 +258,7 @@ export default function Companion() {
       <Navbar minimal />
       <Sidebar />
 
-      <main className="ml-[220px] pt-[76px] px-8 py-8">
+      <main className="lg:ml-[220px] pt-[76px] px-4 md:px-8 py-8 transition-all duration-300">
         <div className="max-w-[820px] mx-auto">
 
           {/* Header */}
@@ -588,7 +588,7 @@ Examples:
                   <ChevronRight size={12} className="text-accent" />
                   How should we help?
                 </p>
-                <div className="grid grid-cols-5 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
                   {allModes.map(mode => {
                     const Icon = MODE_ICONS[mode.key]
                     const isActive = activeMode === mode.key

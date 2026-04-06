@@ -715,7 +715,7 @@ export default function App() {
       <Navbar minimal />
       <Sidebar />
 
-      <div className="ml-[220px] pt-[56px] flex h-[100vh] overflow-hidden relative">
+      <div className="lg:ml-[220px] pt-[56px] flex h-[100vh] overflow-hidden relative transition-all duration-300">
         <aside className="w-[240px] flex-shrink-0 border-r border-dim bg-base p-4 flex flex-col gap-[12px] overflow-y-auto hidden lg:flex">
           <p className="font-mono text-[11px] tracking-[0.12em] uppercase text-text-muted mb-2">Components</p>
           {PALETTE.map(item => (

@@ -46,7 +46,7 @@ export default function CritiquePage() {
       <div className="mesh-glow" />
       <div className="grain-overlay" />
       
-      <main className="relative z-10 ml-[220px] pt-[76px] pb-24 px-6 md:px-8">
+      <main className="relative z-10 lg:ml-[220px] pt-[76px] pb-24 px-4 md:px-8 transition-all duration-300">
         <div className="max-w-[900px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10">
           
           {/* Left Column: Submit Form */}

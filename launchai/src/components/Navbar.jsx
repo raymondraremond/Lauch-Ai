@@ -1,18 +1,31 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { LogOut, User } from 'lucide-react'
+import { LogOut, User, Menu } from 'lucide-react'
+import { useMobileMenu } from '../contexts/MobileMenuContext'
 
 export default function Navbar({ minimal = false }) {
   const navigate = useNavigate()
   const { user, signOut } = useAuth()
+  const { toggleSidebar } = useMobileMenu()
   
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 h-[56px] flex items-center justify-between px-6
                     bg-[#05050a]/75 backdrop-blur-[20px] border-b border-dim">
-      <Link to="/" className="flex items-center gap-2 group">
-        <div className="w-[6px] h-[6px] bg-accent group-hover:bg-accent-hover transition-colors rounded-[1px]"></div>
-        <span className="font-display font-semibold text-[18px] tracking-[-0.03em] text-white">LaunchAI</span>
-      </Link>
+      <div className="flex items-center gap-4">
+        {/* Mobile Toggle - Shown if we're in the app (detected by minimal prop or having a user) */}
+        <button 
+          onClick={toggleSidebar}
+          className="lg:hidden p-1.5 text-secondary hover:text-primary hover:bg-white/5 rounded-md transition-all mr-2"
+          aria-label="Toggle Menu"
+        >
+          <Menu size={20} />
+        </button>
+        
+        <Link to="/" className="flex items-center gap-2 group">
+          <div className="w-[6px] h-[6px] bg-accent group-hover:bg-accent-hover transition-colors rounded-[1px]"></div>
+          <span className="font-display font-semibold text-[18px] tracking-[-0.03em] text-white">LaunchAI</span>
+        </Link>
+      </div>
 
       {!minimal && (
         <div className="flex items-center gap-6">

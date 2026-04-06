@@ -59,33 +59,33 @@ export default function Dashboard() {
       <Navbar minimal />
       <Sidebar />
 
-      <main className="ml-[220px] pt-[76px] px-8 py-8">
+      <main className="lg:ml-[220px] pt-[76px] px-4 md:px-8 py-8 transition-all duration-300">
         <div className="max-w-[1000px] mx-auto">
           {/* Header */}
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div>
-              <h1 className="font-display text-[28px] font-semibold text-primary mb-1 tracking-[-0.03em]">{greeting}, {firstName}</h1>
+              <h1 className="font-display text-[24px] md:text-[28px] font-semibold text-primary mb-1 tracking-[-0.03em]">{greeting}, {firstName}</h1>
               <p className="font-body text-[14px] text-secondary">You have {projects.length} project{projects.length !== 1 ? 's' : ''} active.</p>
             </div>
-            <button onClick={() => navigate('/builder')} className="btn-primary">
+            <button onClick={() => navigate('/builder')} className="btn-primary w-full md:w-auto justify-center">
               <Plus size={16} /> New Project
             </button>
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-[16px] mb-[32px]">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-[16px] mb-[32px]">
             {[
               { label: 'Total Projects', value: projects.length,  icon: Zap,         suffix: '' },
               { label: 'AI Calls This Month', value: totalCalls, icon: TrendingUp,    suffix: '' },
               { label: 'Status',  value: 'Active', icon: Clock,      suffix: '' },
             ].map(s => (
-              <div key={s.label} className="card flex items-center gap-[16px]">
+              <div key={s.label} className="card flex items-center gap-[16px] p-4 md:p-6">
                 <div className="w-[40px] h-[40px] rounded-[8px] bg-accent-dim border border-glow flex items-center justify-center">
                   <s.icon size={18} className="text-accent" />
                 </div>
                 <div>
-                  <p className="text-[24px] font-mono font-medium text-primary tracking-[-0.02em]">{s.value}<span className="text-secondary text-[16px]">{s.suffix}</span></p>
-                  <p className="font-body text-[12px] text-text-muted mt-0.5 tracking-[-0.01em]">{s.label}</p>
+                  <p className="text-[20px] md:text-[24px] font-mono font-medium text-primary tracking-[-0.02em]">{s.value}<span className="text-secondary text-[16px]">{s.suffix}</span></p>
+                  <p className="font-body text-[11px] md:text-[12px] text-text-muted mt-0.5 tracking-[-0.01em]">{s.label}</p>
                 </div>
               </div>
             ))}

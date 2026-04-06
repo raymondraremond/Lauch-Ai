@@ -65,7 +65,7 @@ export default function SettingsPage() {
       <Navbar minimal />
       <Sidebar />
 
-      <main className="ml-[220px] pt-[76px] px-8 py-8 flex flex-col min-h-screen">
+      <main className="lg:ml-[220px] pt-[76px] px-4 md:px-8 py-8 flex flex-col min-h-screen transition-all duration-300">
         <div className="max-w-[700px] mx-auto w-full">
           <div className="mb-[32px]">
             <h1 className="font-display text-[28px] font-semibold text-primary mb-1 tracking-[-0.03em]">Settings</h1>
