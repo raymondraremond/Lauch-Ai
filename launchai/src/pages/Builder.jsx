@@ -26,21 +26,16 @@ const PALETTE = [
   { type: 'file-upload', label: 'File Upload',   icon: UploadCloud,   preview: <div className="p-2 border border-dashed border-secondary bg-overlay rounded-[8px] flex items-center justify-center gap-2"><UploadCloud size={14} className="text-secondary"/><span className="text-[10px] text-secondary">Drop files...</span></div> },
 ]
 
-// ─── Idea-to-Scaffold Modal ──────────────────────────────────────────────────
-const SCAFFOLD_SYSTEM_PROMPT = `You are a LaunchAI app scaffolder. Given a product idea description, output ONLY a valid JSON object. Do not include markdown codeblocks, conversational text, or explanations.
+const SCAFFOLD_SYSTEM_PROMPT = `You are a LaunchAI UI generator. Return ONLY a raw JSON object. NO markdown, NO backticks, NO explanations.
+Generate 3-4 components max. Keep 'systemPrompt' very brief (1 sentence) for maximum speed.
 
-Rules:
-- Types allowed: text-input, textarea, toggle, dropdown, file-upload, structured-result, ai-chat, chart, weather-card, api-status
-- Build 3-6 components that form a complete, functional app.
-- Provide a concise product name.
-
-Output format example:
-{ 
-  "name": "Invoice Analyzer", 
+Format EXACTLY like this:
+{
+  "name": "App Name",
   "components": [
-    {"type":"file-upload","label":"Upload Invoice","variableId":"invoice_file","systemPrompt":""},
-    {"type":"structured-result","label":"AI Analysis","variableId":"analysis","systemPrompt":"Analyze the invoice at {{invoice_file}} and extract: vendor, total, line items, due date."}
-  ] 
+    {"type":"text-input","label":"Input","variableId":"in","systemPrompt":""},
+    {"type":"ai-chat","label":"AI","variableId":"ai","systemPrompt":"Analyze {{in}}"}
+  ]
 }`
 
 function IdeaScaffoldModal({ onScaffold, onUseTemplate, onBlank, onCancel }) {
@@ -64,21 +59,32 @@ function IdeaScaffoldModal({ onScaffold, onUseTemplate, onBlank, onCancel }) {
       const data = await callAI({
         parts: [
           { text: SCAFFOLD_SYSTEM_PROMPT },
-          { text: `Product idea: ${idea.trim()}` }
+          { text: `Idea: ${idea.trim()}` }
         ],
         model: AI_MODELS.DEFAULT_GENERATION
       })
       
       const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
       
-      // Extremely robust JSON extraction
-      let clean = raw.trim()
-      const jsonMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/i) || raw.match(/({[\s\S]*})/)
-      if (jsonMatch) clean = jsonMatch[1].trim()
+      // Extremely robust JSON extraction: Remove all backticks and "json" prefix
+      let clean = raw.replace(/```json/gi, '').replace(/```/g, '').trim()
       
-      const parsed = JSON.parse(clean)
+      // Attempt to find the first { and last } in case there is conversational text
+      const firstBrace = clean.indexOf('{')
+      const lastBrace = clean.lastIndexOf('}')
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        clean = clean.substring(firstBrace, lastBrace + 1)
+      }
+      
+      let parsed;
+      try {
+        parsed = JSON.parse(clean)
+      } catch (jsonErr) {
+        console.error("JSON parse failed on:", clean)
+        throw new Error("AI output was interrupted or incorrectly formatted. Please click 'Build' to try again.")
+      }
+      
       const parsedComps = parsed.components || (Array.isArray(parsed) ? parsed : [])
-      
       const components = parsedComps.map((c, i) => ({
         id: Date.now().toString() + i,
         type: c.type,
@@ -90,11 +96,10 @@ function IdeaScaffoldModal({ onScaffold, onUseTemplate, onBlank, onCancel }) {
       onScaffold(components, parsed.name || idea.trim())
     } catch (err) {
       console.error('Scaffold error:', err)
-      setError(err.message === 'Failed to fetch' || !err.message 
+      const msg = err.message || ''
+      setError(msg.includes('Failed to fetch') 
         ? 'Network error. Please check your connection.'
-        : err.message.length < 100 
-          ? err.message 
-          : 'Could not parse AI response. Try rephrasing your idea.')
+        : msg.length < 120 ? msg : 'AI response error. Please try again.')
       setIsBuilding(false)
     }
   }
