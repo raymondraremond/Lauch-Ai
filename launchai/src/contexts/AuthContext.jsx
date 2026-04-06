@@ -62,21 +62,15 @@ export const AuthProvider = ({ children }) => {
           }
 
           const hashHasToken = window.location.hash.includes('access_token=')
-          if (event === 'INITIAL_SESSION' && !currentSession && hashHasToken) {
-            console.log('ℹ️ [AUTH PROVIDER] OAuth callback detected — waiting for SIGNED_IN...')
-            return 
-          }
-
           if (event === 'SIGNED_IN' && hashHasToken) {
             window.history.replaceState(null, '', window.location.pathname + window.location.search)
           }
 
-          if (event === 'TOKEN_REFRESHED' || !initialized.current) {
-            console.log(`✅ [AUTH PROVIDER] Auth event ${event} - clearing loading state`)
-            clearTimeout(timer)
-            initialized.current = true
-            setLoading(false)
-          }
+          // Unconditionally clear loading state on every event
+          console.log(`✅ [AUTH PROVIDER] Auth event ${event} - clearing loading state`)
+          clearTimeout(timer)
+          initialized.current = true
+          setLoading(false)
         }
       )
       subscription = data?.subscription
@@ -89,18 +83,13 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log('🔍 [AUTH PROVIDER] Fetching initial session...')
       supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
-        if (initialized.current) {
-          console.log('ℹ️ [AUTH PROVIDER] Already initialized via event.')
-          return
-        }
-  
         if (existingSession) {
           console.log('✅ [AUTH PROVIDER] Found existing session.')
           setSession(existingSession)
           setUser(existingSession.user)
           fetchProfile(existingSession.user.id)
         } else {
-          console.log('ℹ️ [AUTH PROVIDER] No session found.')
+          console.log('ℹ : [AUTH PROVIDER] No session found.')
         }
         
         clearTimeout(timer)
