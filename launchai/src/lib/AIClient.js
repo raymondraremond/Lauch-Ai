@@ -69,7 +69,18 @@ export async function callAI(options) {
       body: JSON.stringify({ prompt, parts, model })
     })
 
-    const data = await response.json()
+    const text = await response.text()
+    if (!text) {
+      throw new Error('The AI server returned an empty response. Please try again.')
+    }
+
+    let data;
+    try {
+      data = JSON.parse(text)
+    } catch (e) {
+      console.error('❌ [AI CLIENT] JSON Parse Error:', text)
+      throw new Error('The AI server returned an invalid format. Please try again.')
+    }
 
     if (!response.ok) {
       console.error(`❌ [AI CLIENT] Proxy error (${response.status}):`, data.error)

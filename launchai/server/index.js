@@ -50,349 +50,269 @@ const setCorsHeaders = (req, res) => {
 };
 
 const server = http.createServer(async (req, res) => {
-  if (req.method === 'OPTIONS') {
-    setCorsHeaders(req, res);
-    res.writeHead(204);
-    res.end();
-    return;
-  }
-
-  // Helper to parse JSON body
-  const getBody = async () => {
-    return new Promise((resolve, reject) => {
-      let body = '';
-      req.on('data', chunk => body += chunk);
-      req.on('end', () => {
-        try { resolve(body ? JSON.parse(body) : {}); }
-        catch (e) { resolve({}); }
-      });
-      req.on('error', reject);
-    });
-  };
-
-  // --- User Credit & Profile Helper ---
-  const handleUserCredits = async (userId, amount = -1) => {
-    const supabaseUrl = process.env.VITE_SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!supabaseUrl || !supabaseKey) return { error: 'Environment unconfigured' };
-
-    // Fetch credits
-    const getRes = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}&select=credits`, {
-      headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
-    });
-    const profiles = await getRes.json();
-    const userCredits = profiles?.[0]?.credits ?? 0;
-
-    if (amount < 0 && userCredits < Math.abs(amount)) {
-      return { error: 'Insufficient credits', credits: userCredits };
+  // Global Error Boundary for the request
+  try {
+    if (req.method === 'OPTIONS') {
+      setCorsHeaders(req, res);
+      res.writeHead(204);
+      res.end();
+      return;
     }
 
-    // Update credits
-    const upRes = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`, {
-      method: 'PATCH',
-      headers: { 
-        'Content-Type': 'application/json',
-        'apikey': supabaseKey,
-        'Authorization': `Bearer ${supabaseKey}`,
-        'Prefer': 'return=representation'
-      },
-      body: JSON.stringify({ credits: userCredits + amount })
-    });
-    const updated = await upRes.json();
-    return { success: true, credits: updated?.[0]?.credits };
-  };
+    // Helper to parse JSON body (Safe parsing)
+    const getBody = async () => {
+      // Return cached body if already parsed to avoid stream double-read issues
+      if (req._parsedBody) return req._parsedBody;
 
-  // --- Auth Middleware Helper ---
-  const getUserIdFromToken = async (token) => {
-    const supabaseUrl = process.env.VITE_SUPABASE_URL;
-
-    // --- SMART FALLBACK ---
-    // If ANON_KEY is missing from Render dashboard, use SERVICE_ROLE_KEY (which is on Render)
-    const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
-    
-    if (!token) return null;
-
-    try {
-      console.log(`[AUTH] Validating token against: ${supabaseUrl}/auth/v1/user`);
-      const res = await fetch(`${supabaseUrl}/auth/v1/user`, {
-        headers: { 'apikey': supabaseKey, 'Authorization': token }
+      return new Promise((resolve, reject) => {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', () => {
+          try { 
+            const parsed = body ? JSON.parse(body) : {};
+            req._parsedBody = parsed; // Cache it
+            resolve(parsed); 
+          }
+          catch (e) { resolve({}); }
+        });
+        req.on('error', reject);
       });
+    };
+
+    // --- User Credit & Profile Helper ---
+    const handleUserCredits = async (userId, amount = -1) => {
+      const supabaseUrl = process.env.VITE_SUPABASE_URL;
+      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (!supabaseUrl || !supabaseKey) return { error: 'Environment unconfigured' };
+
+      try {
+        // Fetch credits
+        const getRes = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}&select=credits`, {
+          headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
+        });
+        
+        if (!getRes.ok) throw new Error('Supabase Profile Fetch Failed');
+        const profiles = await getRes.json();
+        const userCredits = profiles?.[0]?.credits ?? 0;
+
+        if (amount < 0 && userCredits < Math.abs(amount)) {
+          return { error: 'Insufficient credits', credits: userCredits };
+        }
+
+        // Update credits
+        const upRes = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`, {
+          method: 'PATCH',
+          headers: { 
+            'Content-Type': 'application/json',
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify({ credits: userCredits + amount })
+        });
+        
+        const updated = await upRes.json();
+        return { success: true, credits: updated?.[0]?.credits };
+      } catch (err) {
+        console.error('[CREDITS] Error:', err.message);
+        return { error: 'Database Connectivity Issue' };
+      }
+    };
+
+    // --- Auth Middleware Helper ---
+    const getUserIdFromToken = async (token) => {
+      const supabaseUrl = process.env.VITE_SUPABASE_URL;
+      const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
       
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error(`[AUTH] Supabase validation failed (${res.status}):`, errorText);
+      if (!token) return null;
+
+      try {
+        const res = await fetch(`${supabaseUrl}/auth/v1/user`, {
+          headers: { 'apikey': supabaseKey, 'Authorization': token }
+        });
+        
+        if (!res.ok) return null;
+        const user = await res.json();
+        return user?.id || null;
+      } catch (err) {
         return null;
       }
+    };
 
-      const user = await res.json();
-      return user?.id || null;
-    } catch (err) {
-      console.error('[AUTH] Critical fetch error during validation:', err.message);
-      return null;
-    }
-  };
-
-  if (req.method === 'GET' && (req.url === '/' || req.url === '')) {
-    setCorsHeaders(req, res);
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ 
-      status: 'LaunchAI server running ✅',
-      environment: process.env.NODE_ENV || 'development',
-      timestamp: new Date().toISOString()
-    }));
-    return;
-  }
-
-  if (req.method === 'GET' && req.url === '/api/user/credits') {
-    setCorsHeaders(req, res);
-    const userId = await getUserIdFromToken(req.headers.authorization);
-    if (!userId) {
-      res.writeHead(401); res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return;
-    }
-    const result = await handleUserCredits(userId, 0);
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ credits: result.credits || 0 }));
-    return;
-  }
-
-  if (req.method === 'POST' && req.url === '/api/generate') {
-    setCorsHeaders(req, res);
-    const userId = await getUserIdFromToken(req.headers.authorization);
-    if (!userId) {
-      res.writeHead(401); res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return;
-    }
-
-    const { prompt, parts, model = 'gemini-2.5-flash' } = await getBody();
-    
-    // Check & Decrement Credit
-    const creditCheck = await handleUserCredits(userId, -1);
-    if (creditCheck.error) {
-      res.writeHead(402); res.end(JSON.stringify({ error: 'Insufficient credits (NGN top-up required)', credits: creditCheck.credits }));
-      return;
-    }
-
-    try {
-      const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: parts || [{ text: prompt }] }] })
-      });
-      const data = await geminiRes.json();
+    if (req.method === 'GET' && (req.url === '/' || req.url === '')) {
+      setCorsHeaders(req, res);
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ ...data, remainingCredits: creditCheck.credits }));
-    } catch (err) {
-      console.error('[AI Proxy] Error:', err);
-      res.writeHead(500); res.end(JSON.stringify({ error: 'AI Generation Failed' }));
-    }
-    return;
-  }
-
-  // Paystack Webhook Placeholder
-  if (req.method === 'POST' && req.url === '/api/paystack/webhook') {
-    setCorsHeaders(req, res);
-    console.log('[Paystack Webhook] Received event (NGN Transition Ready)');
-    res.writeHead(200); res.end(JSON.stringify({ status: 'ok' }));
-    return;
-  }
-
-  if (req.method === 'POST' && req.url === '/api/critique') {
-    setCorsHeaders(req, res);
-    const userId = await getUserIdFromToken(req.headers.authorization);
-    if (!userId) {
-      res.writeHead(401); res.end(JSON.stringify({ error: 'Unauthorized' }));
+      res.end(JSON.stringify({ status: 'LaunchAI server running ✅', timestamp: new Date().toISOString() }));
       return;
     }
 
-    const body = await getBody();
-    const { tier } = body;
-
-    // Check & Decrement Credit (Pro audits cost 3, free cost 1)
-    const cost = tier === 'pro' ? 3 : 1;
-    const creditCheck = await handleUserCredits(userId, -cost);
-    if (creditCheck.error) {
-      res.writeHead(402); res.end(JSON.stringify({ error: `Insufficient credits for ${tier} audit (NGN top-up required)`, credits: creditCheck.credits }));
+    if (req.method === 'GET' && req.url === '/api/user/credits') {
+      setCorsHeaders(req, res);
+      const userId = await getUserIdFromToken(req.headers.authorization);
+      if (!userId) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Unauthorized' }));
+        return;
+      }
+      const result = await handleUserCredits(userId, 0);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ credits: result.credits || 0 }));
       return;
     }
 
-    try {
-      const body = await getBody();
-      const { submissionType, projectTitle, projectDescription, targetAudience, aiFeatures, fileContent, fileType, url, additionalContext, tier } = body;
-
-      let systemPrompt = '';
-      if (tier === 'free') {
-        systemPrompt = "You are a sharp, honest AI product critic. Give a brief critique in exactly 4 parts. Use headers exactly like this: '### SCORE: X/100 ###', '### STRONGEST POINT ###', '### BIGGEST RISK ###', and '### TOP SUGGESTION ###'.\n0. SCORE: Rate the concept out of 100 based on market potential and execution (e.g., 75/100)\n1. STRONGEST POINT: One thing this project does well (2 sentences max)\n2. BIGGEST RISK: The most critical problem or gap (2 sentences max)\n3. TOP SUGGESTION: The single most impactful improvement they should make (2 sentences max)\nBe direct, specific, and constructive. No fluff.";
-      } else {
-        systemPrompt = "You are a senior AI product strategist and critic. Give a comprehensive critique with these sections, using headers like '### SECTION NAME ###':\n0. SCORE: Provide a total score in the format '### SCORE: X/100 ###' based on all criteria below.\n1. CONCEPT SCORE: Rate the idea out of 10 with justification\n2. MARKET FIT: Assess target audience and demand (3-4 sentences)\n3. AI FEATURE ANALYSIS: Evaluate their AI feature choices — are they the right ones? (3-4 sentences)\n4. UX & FLOW CRITIQUE: Assess user experience and product flow (3-4 sentences)\n5. COMPETITIVE LANDSCAPE: Name 2-3 competitors and how this project differentiates (3-4 sentences)\n6. IMPROVEMENT ROADMAP: Give 5 specific, prioritized action items to make this product stronger\n7. VERDICT: Final honest recommendation in 2 sentences\nBe brutally honest, specific, and valuable. This is a paid critique.";
-      }
-
-      let contents = [];
-      if (submissionType === 'file' && fileType === 'pdf') {
-        contents = [{
-          role: 'user',
-          parts: [
-            { text: `Please critique this AI project titled "${projectTitle || 'N/A'}". Analyze the attached PDF for project details and context.` },
-            { inline_data: { mime_type: 'application/pdf', data: fileContent } }
-          ]
-        }];
-      } else {
-        let promptText = '';
-        if (submissionType === 'file') {
-          promptText = `Please critique this AI project submitted as a document file.\nTitle: ${projectTitle || 'N/A'}\nDocument contents:\n---\n${fileContent || 'No content provided'}\n---\nBased on the above, give a full critique covering what this project is, who it's for, and how strong it is.`;
-        } else if (submissionType === 'link') {
-          promptText = `Please critique this AI project based on the link provided.\nTitle: ${projectTitle || 'N/A'}\nProject URL: ${url || 'N/A'}\nAdditional context from the user: ${additionalContext || 'None provided'}\n\nSearch and analyze the project from the URL, infer what it does, who it targets, and what AI features it likely uses. Then give a full critique.`;
-        } else {
-          promptText = `Please critique this AI project:\nTitle: ${projectTitle || 'N/A'}\nDescription: ${projectDescription || 'N/A'}\nTarget Audience: ${targetAudience || 'N/A'}\nAI Features Used: ${aiFeatures || 'N/A'}`;
-        }
-        contents = [{ role: 'user', parts: [{ text: promptText }] }];
-      }
-
-      console.log(`[Critique] Generating ${tier} critique for "${projectTitle}" using Gemini 3.1 Pro-preview...`);
-
-      if (!apiKey) {
-         console.error('[Critique] API key not configured');
-         res.writeHead(500, { 'Content-Type': 'application/json' });
-         res.end(JSON.stringify({ error: 'API key not configured' }));
-         return;
-      }
-
-      // Call Gemini 3.1 Pro Preview endpoint for advanced reasoning capability
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemPrompt }] },
-          contents: contents,
-        })
-      });
-
-      const data = await response.json();
-      
-      if (data.error) {
-        console.error('[Critique] Gemini API Error:', data.error.message || data.error);
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: data.error.message || 'Gemini API Error' }));
+    if (req.method === 'POST' && req.url === '/api/generate') {
+      setCorsHeaders(req, res);
+      const userId = await getUserIdFromToken(req.headers.authorization);
+      if (!userId) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Unauthorized' }));
         return;
       }
 
-      console.log('[Critique] Successfully generated critique');
-
-      const critique = data.candidates?.[0]?.content?.parts?.[0]?.text || "No critique returned.";
-
-      // --- SUPABASE PERSISTENCE ---
-      const supabaseUrl = process.env.VITE_SUPABASE_URL;
-      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-      if (supabaseUrl && supabaseKey) {
-        try {
-          await fetch(`${supabaseUrl}/rest/v1/critiques`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': supabaseKey,
-              'Authorization': `Bearer ${supabaseKey}`,
-              'Prefer': 'return=minimal'
-            },
-            body: JSON.stringify({
-              user_id: userId,
-              project_title: projectTitle || 'Untitled',
-              project_description: projectDescription || '',
-              submission_type: submissionType || 'manual',
-              critique_text: critique,
-              tier: tier || 'free',
-              created_at: new Date().toISOString()
-            })
-          });
-          console.log('[Supabase] Critique persisted successfully');
-        } catch (sErr) {
-          console.error('[Supabase] Failed to persist critique:', sErr.message);
-        }
+      const { prompt, parts, model } = await getBody();
+      
+      // Credit Check
+      const creditCheck = await handleUserCredits(userId, -1);
+      if (creditCheck.error) {
+        res.writeHead(402, { 'Content-Type': 'application/json' }); 
+        res.end(JSON.stringify({ error: creditCheck.error, credits: creditCheck.credits }));
+        return;
       }
-      // ----------------------------
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ critique, tier, projectTitle, remainingCredits: creditCheck.credits }));
-    } catch (err) {
-      console.error(err);
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Internal server error' }));
-    }
-    return;
-  }
 
-  if (req.method === 'POST' && req.url === '/api/companion') {
-    setCorsHeaders(req, res);
-    const userId = await getUserIdFromToken(req.headers.authorization);
-    if (!userId) {
-      res.writeHead(401); res.end(JSON.stringify({ error: 'Unauthorized' }));
-      return;
-    }
+      // Use stable 1.5-flash as the default generation engine
+      const activeModel = model === 'gemini-2.5-flash' ? 'gemini-1.5-flash' : (model || 'gemini-1.5-flash');
 
-    const { systemPrompt, userMessage, provider = 'gemini' } = await getBody();
-
-    // Check & Decrement 1 Credit for companion analysis
-    const creditCheck = await handleUserCredits(userId, -1);
-    if (creditCheck.error) {
-      res.writeHead(402); res.end(JSON.stringify({ error: 'Insufficient credits (NGN top-up required)', credits: creditCheck.credits }));
-      return;
-    }
-
-    try {
-      let aiResponseText = '';
-      let usedProvider = '';
-
-      if (provider === 'anthropic' && anthropicKey) {
-        const anthRes = await fetch('https://api.anthropic.com/v1/messages', {
+      try {
+        const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${apiKey}`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': anthropicKey,
-            'anthropic-version': '2023-06-01'
-          },
-          body: JSON.stringify({
-            model: 'claude-3-5-sonnet-20240620',
-            max_tokens: 2048,
-            system: systemPrompt,
-            messages: [{ role: 'user', content: userMessage }]
-          })
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: parts || [{ text: prompt }] }] })
         });
-        const data = await anthRes.json();
-        aiResponseText = data.content?.[0]?.text || 'No response from Claude.';
-        usedProvider = 'Claude Sonnet';
-      } else if (apiKey) {
-        // Default to Gemini
-        const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+        
+        const data = await geminiRes.json();
+        
+        if (!geminiRes.ok) {
+          throw new Error(data.error?.message || 'Google AI Error');
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ...data, remainingCredits: creditCheck.credits }));
+      } catch (err) {
+        console.error('[AI Proxy] Error:', err.message);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'AI Generation Failed: ' + err.message }));
+      }
+      return;
+    }
+
+    if (req.method === 'POST' && req.url === '/api/critique') {
+      setCorsHeaders(req, res);
+      const userId = await getUserIdFromToken(req.headers.authorization);
+      if (!userId) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Unauthorized' }));
+        return;
+      }
+
+      const body = await getBody();
+      const { tier, submissionType, projectTitle, projectDescription, targetAudience, aiFeatures, fileContent, fileType, url, additionalContext } = body;
+
+      const cost = tier === 'pro' ? 3 : 1;
+      const creditCheck = await handleUserCredits(userId, -cost);
+      if (creditCheck.error) {
+        res.writeHead(402, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: creditCheck.error, credits: creditCheck.credits }));
+        return;
+      }
+
+      try {
+        // System Prompt Logic
+        let systemPrompt = '';
+        if (tier === 'free') {
+          systemPrompt = "You are a sharp AI critic. Exactly 4 parts:SCORE: X/100, STRONGEST POINT, BIGGEST RISK, TOP SUGGESTION.";
+        } else {
+          systemPrompt = "You are a senior AI strategist. Detailed 7-part critique: SCORE, CONCEPT, MARKET FIT, AI FEATURES, UX, COMPETITIVE, ROADMAP.";
+        }
+
+        let contents = [];
+        if (submissionType === 'file' && fileType === 'pdf') {
+          contents = [{ role: 'user', parts: [
+            { text: `Critique "${projectTitle}". Analyze PDF context.` },
+            { inline_data: { mime_type: 'application/pdf', data: fileContent } }
+          ]}];
+        } else {
+          contents = [{ role: 'user', parts: [{ text: `Critique "${projectTitle}": ${projectDescription}` }] }];
+        }
+
+        // Use stable Pro 1.5 for reasoning
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             system_instruction: { parts: [{ text: systemPrompt }] },
-            contents: [{ role: 'user', parts: [{ text: userMessage }] }],
-            generationConfig: { maxOutputTokens: 2048, temperature: 0.7 }
+            contents: contents,
           })
         });
-        const data = await geminiRes.json();
-        aiResponseText = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response from Gemini.';
-        usedProvider = 'Gemini Pro';
-      } else {
-        throw new Error('No AI provider keys configured on server');
+
+        const data = await response.json();
+        
+        if (data.error) throw new Error(data.error.message || 'Gemini Pro Error');
+
+        const critique = data.candidates?.[0]?.content?.parts?.[0]?.text || "No critique returned.";
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ critique, remainingCredits: creditCheck.credits }));
+      } catch (err) {
+        console.error('[Critique] Error:', err.message);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Critique Generation Failed' }));
+      }
+      return;
+    }
+
+    if (req.method === 'POST' && req.url === '/api/companion') {
+      setCorsHeaders(req, res);
+      const userId = await getUserIdFromToken(req.headers.authorization);
+      if (!userId) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Unauthorized' }));
+        return;
       }
 
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ 
-        response: aiResponseText, 
-        provider: usedProvider,
-        remainingCredits: creditCheck.credits 
-      }));
-    } catch (err) {
-      console.error('[Companion Proxy] Error:', err);
-      res.writeHead(500); res.end(JSON.stringify({ error: 'Companion Analysis Failed' }));
-    }
-    return;
-  }
+      const { systemPrompt, userMessage } = await getBody();
+      const creditCheck = await handleUserCredits(userId, -1);
+      if (creditCheck.error) {
+        res.writeHead(402, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: creditCheck.error }));
+        return;
+      }
 
-  // Fallback 404
-  res.writeHead(404);
-  res.end('Not Found');
+      const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: 'user', parts: [{ text: userMessage }] }]
+        })
+      });
+      const data = await geminiRes.json();
+      const aiResponseText = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response.';
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ response: aiResponseText, remainingCredits: creditCheck.credits }));
+      return;
+    }
+
+    // Default 404
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Not Found' }));
+
+  } catch (criticalError) {
+    console.error('🔥 [SERVER CRITICAL]:', criticalError);
+    if (!res.headersSent) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Internal Server Disaster', details: criticalError.message }));
+    }
+  }
 });
 
 server.listen(PORT, () => {

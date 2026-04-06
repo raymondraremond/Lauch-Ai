@@ -17,6 +17,17 @@ export default function Sidebar() {
   const loc = useLocation()
   const navigate = useNavigate()
   const { user, profile, signOut } = useAuth()
+  
+  // Dynamic path for Companion based on current Builder context
+  const searchParams = new URLSearchParams(loc.search)
+  const currentProjectId = searchParams.get('id')
+  
+  const getCompanionPath = () => {
+    if (loc.pathname === '/builder' && currentProjectId) {
+      return `/companion?projectId=${currentProjectId}`
+    }
+    return '/companion'
+  }
 
   // API Key Check
   const hasGemini = getGeminiKeys().length > 0 || !!import.meta.env.VITE_GOOGLE_API_KEY
@@ -27,10 +38,11 @@ export default function Sidebar() {
     <aside className="fixed left-0 top-0 h-full w-[220px] bg-base border-r border-dim flex flex-col z-40 pt-20 pb-6 font-body">
       <div className="flex-1 px-3 space-y-1">
         {nav.map(({ label, icon: Icon, path, isNew }) => {
+          const effectivePath = label === 'Companion' ? getCompanionPath() : path
           return (
             <NavLink
               key={path}
-              to={path}
+              to={effectivePath}
               className={({ isActive }) => `relative flex items-center gap-3 px-[12px] py-[8px] rounded-[6px] text-[13px] transition-colors duration-150 group ${
                 isActive
                   ? 'bg-[#6366f11a] text-accent'

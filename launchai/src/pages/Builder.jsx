@@ -10,7 +10,7 @@ import {
   Type, AlignLeft, ToggleLeft, List, MessageSquare, BarChart2,
   Trash2, Move, Eye, Save, Rocket, GripVertical, Plus, Settings2,
   Check, Sparkles, ArrowRight, Cloud, Activity, FileText, Download, X,
-  ChevronUp, ChevronDown, UploadCloud, Compass, Loader2, Wand2
+  ChevronUp, ChevronDown, UploadCloud, Compass, Loader2, Wand2, AlertCircle
 } from 'lucide-react'
 
 const PALETTE = [
@@ -65,23 +65,46 @@ function IdeaScaffoldModal({ onScaffold, onUseTemplate, onBlank, onCancel }) {
       })
       
       const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+      if (!raw) throw new Error("The AI returned an empty response. Please try again.")
+
+      // EXTREMELY ROBUST JSON EXTRACTION
+      let clean = '';
+      const firstBrace = raw.indexOf('{');
+      const lastBrace = raw.lastIndexOf('}');
       
-      // Extremely robust JSON extraction: Remove all backticks and "json" prefix
-      let clean = raw.replace(/```json/gi, '').replace(/```/g, '').trim()
-      
-      // Attempt to find the first { and last } in case there is conversational text
-      const firstBrace = clean.indexOf('{')
-      const lastBrace = clean.lastIndexOf('}')
       if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-        clean = clean.substring(firstBrace, lastBrace + 1)
+        clean = raw.substring(firstBrace, lastBrace + 1);
+      } else if (firstBrace !== -1) {
+        // AI truncated before closing brace. Try to recovery by adding braces.
+        console.warn("AI response truncated, attempting recovery...")
+        clean = raw.substring(firstBrace);
+        // Simple brace balancing helper
+        const opens = (clean.match(/\{/g) || []).length;
+        const closes = (clean.match(/\}/g) || []).length;
+        if (opens > closes) {
+          clean += '}'.repeat(opens - closes);
+        }
+      } else {
+        // Fallback: strip markdown if present
+        clean = raw.replace(/```json/gi, '').replace(/```/g, '').trim();
+      }
+
+      if (!clean || !clean.includes('{')) {
+        throw new Error("No valid app blueprint was found. Please try a different description.")
       }
       
       let parsed;
       try {
         parsed = JSON.parse(clean)
       } catch (jsonErr) {
-        console.error("JSON parse failed on:", clean)
-        throw new Error("AI output was interrupted or incorrectly formatted. Please click 'Build' to try again.")
+        // One final attempt: fix trailing commas which often break JSON.parse
+        const fixed = clean.replace(/,\s*([\]}])/g, '$1')
+        try {
+          parsed = JSON.parse(fixed)
+        } catch(e) {
+          console.error("JSON parse failed on:", clean)
+          throw new Error("The AI blueprint was partial or malformed. Please try again with a simpler request.")
+        }
       }
       
       const parsedComps = parsed.components || (Array.isArray(parsed) ? parsed : [])
@@ -96,19 +119,37 @@ function IdeaScaffoldModal({ onScaffold, onUseTemplate, onBlank, onCancel }) {
       onScaffold(components, parsed.name || idea.trim())
     } catch (err) {
       console.error('Scaffold error:', err)
-      const msg = err.message || ''
-      setError(msg.includes('Failed to fetch') 
-        ? 'Network error. Please check your connection.'
-        : msg.length < 120 ? msg : 'AI response error. Please try again.')
+      // Map cryptic JSON errors to user-friendly messages
+      const msg = err.message.includes('JSON') || err.message.includes('end of input')
+        ? 'AI response was cut off. Please click "Build" again to retry.'
+        : err.message;
+      setError(msg || 'AI response error. Please try again.')
       setIsBuilding(false)
     }
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-sm bg-void/80">
-      <div className="card-premium p-8 max-w-[560px] w-full shadow-2xl animate-in zoom-in-95 duration-300">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-sm bg-void/80 overflow-hidden">
+      <div className={`card-premium p-8 max-w-[560px] w-full shadow-2xl transition-all duration-500 overflow-hidden relative ${isBuilding ? 'scale-105 border-accent/40 shadow-accent/20' : 'animate-in zoom-in-95'}`}>
+        
+        {/* Building Pulse Overlay */}
+        {isBuilding && (
+          <div className="absolute inset-0 z-20 bg-void/60 backdrop-blur-md flex flex-col items-center justify-center p-8 animate-in fade-in duration-500">
+            <div className="companion-pulse w-24 h-24 rounded-[32px] bg-accent/20 border border-glow flex items-center justify-center mb-6">
+              <Sparkles size={40} className="text-accent animate-pulse" />
+            </div>
+            <h3 className="font-display text-2xl font-bold text-primary mb-2 text-center animate-pulse">Designing your App Blueprint...</h3>
+            <p className="font-body text-[14px] text-secondary text-center max-w-xs">
+              Gemini is analyzing your idea and scaffolding components. This usually takes 3-5 seconds.
+            </p>
+            <div className="mt-8 w-48 h-[6px] bg-base rounded-full overflow-hidden">
+              <div className="h-full bg-accent animate-progress" style={{ width: '100%' }} />
+            </div>
+          </div>
+        )}
+
         {/* Header */}
-        <div className="flex items-center gap-3 mb-2">
+        <div className={`flex items-center gap-3 mb-2 transition-opacity duration-300 ${isBuilding ? 'opacity-20 translate-y-[-10px]' : ''}`}>
           <div className="w-[36px] h-[36px] rounded-[10px] bg-gradient-to-br from-accent to-[#7c3aed] flex items-center justify-center shadow-lg shadow-accent/25">
             <Wand2 size={18} className="text-white" />
           </div>
@@ -119,7 +160,7 @@ function IdeaScaffoldModal({ onScaffold, onUseTemplate, onBlank, onCancel }) {
         </div>
 
         {/* Idea Input */}
-        <div className="mt-6">
+        <div className={`mt-6 transition-opacity duration-300 ${isBuilding ? 'opacity-20' : ''}`}>
           <textarea
             className="input w-full min-h-[100px] resize-none text-[14px] leading-[1.65] bg-void/50"
             placeholder="e.g. A customer support bot that reads uploaded documents and answers questions about them"
@@ -148,7 +189,7 @@ function IdeaScaffoldModal({ onScaffold, onUseTemplate, onBlank, onCancel }) {
         {error && <p className="mt-3 text-[12px] text-danger font-body">{error}</p>}
 
         {/* Actions */}
-        <div className="mt-6 flex flex-col gap-3">
+        <div className={`mt-6 flex flex-col gap-3 transition-opacity duration-300 ${isBuilding ? 'opacity-20' : ''}`}>
           <button
             onClick={handleBuildFromIdea}
             disabled={!idea.trim() || isBuilding}
@@ -156,9 +197,7 @@ function IdeaScaffoldModal({ onScaffold, onUseTemplate, onBlank, onCancel }) {
               !idea.trim() || isBuilding ? 'opacity-50 cursor-not-allowed hover:translate-y-0' : ''
             }`}
           >
-            {isBuilding
-              ? <><Loader2 size={16} className="animate-spin" /> Building your app&hellip;</>
-              : <><Sparkles size={16} /> Build this app <ArrowRight size={14} /></>}
+             <Sparkles size={16} /> Build this app <ArrowRight size={14} />
           </button>
 
           <div className="flex items-center gap-3">
@@ -210,7 +249,16 @@ export default function Builder() {
   const [dragCounter, setDragCounter] = useState(0)
   const [isLoading, setIsLoading] = useState(!!projectId)
   const [error, setError] = useState(null)
+  const [toasts, setToasts] = useState([])
   const chatRef = useRef(null)
+
+  const showToast = useCallback((title, type = 'success') => {
+    const id = Date.now()
+    setToasts(prev => [...prev, { id, title, type }])
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id))
+    }, 4000)
+  }, [])
 
   // Load project or initialize
   useEffect(() => {
@@ -289,15 +337,20 @@ export default function Builder() {
       }
       if (!silent) {
         setSaveSuccess(true)
+        showToast('Project saved successfully')
         setTimeout(() => setSaveSuccess(false), 2000)
       }
       return saved
     } catch (err) {
       console.error('Failed to save project:', err)
       if (!silent) {
-        alert('Failed to save project: ' + (err.message || 'Please check your connection and login status.'))
+        if (err.message?.includes('Authentication required')) {
+          showToast('Sign in to save your project', 'error')
+        } else {
+          showToast('Failed to save project', 'error')
+        }
       }
-      throw err; // throw so the caller knows it failed
+      throw err;
     } finally {
       setIsSaving(false)
     }
@@ -856,6 +909,18 @@ export default function App() {
           onCancel={() => navigate('/dashboard')}
         />
       )}
+
+      {/* Toast Notifications */}
+      <div className="fixed bottom-6 right-6 z-[300] flex flex-col gap-3">
+        {toasts.map(t => (
+          <div key={t.id} className={`flex items-center gap-3 px-4 py-3 rounded-xl border shadow-2xl backdrop-blur-xl animate-in slide-in-from-right-full duration-300 ${
+            t.type === 'error' ? 'bg-danger/10 border-danger/30 text-danger' : 'bg-base/80 border-dim text-primary'
+          }`}>
+            {t.type === 'error' ? <AlertCircle size={18} /> : <Check size={18} className="text-success" />}
+            <span className="font-body text-[13px] font-medium">{t.title}</span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

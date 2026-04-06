@@ -12,6 +12,7 @@ import {
   ArrowRight, Info, ChevronRight, Clock, Trash2,
   History, ChevronDown, Eye, Compass
 } from 'lucide-react'
+import { getProjectById } from '../lib/ProjectStore.js'
 
 const MODE_ICONS = {
   diagnose: Search,
@@ -50,18 +51,39 @@ export default function Companion() {
   const [submitted, setSubmitted] = useState(false)
   const [dragOver, setDragOver] = useState(false)
 
-  // History
+  // history
   const [history, setHistory] = useState([])
   const [showHistory, setShowHistory] = useState(false)
+  
+  // Project context
+  const [linkedProject, setLinkedProject] = useState(null)
+  const [isLoadingProject, setIsLoadingProject] = useState(!!linkedProjectId)
 
   const allTypes = getAllContentTypes()
   const allModes = getAllModes()
   const effectiveType = manualType || contentType?.type || 'other'
 
-  // Load history on mount
   useEffect(() => {
     setHistory(getHistory())
   }, [])
+
+  // Load project context if projectId is provided
+  useEffect(() => {
+    if (linkedProjectId && linkedProjectId !== 'draft') {
+      async function loadProject() {
+        try {
+          setIsLoadingProject(true)
+          const p = await getProjectById(linkedProjectId)
+          if (p) setLinkedProject(p)
+        } catch (err) {
+          console.error("Failed to load project context for companion:", err)
+        } finally {
+          setIsLoadingProject(false)
+        }
+      }
+      loadProject()
+    }
+  }, [linkedProjectId])
 
   // Auto-detect content type as user types
   function handleInputChange(e) {
@@ -149,8 +171,17 @@ export default function Companion() {
     setIsAnalyzing(true)
     setResult(null)
 
+    // Construct enriched input with project context if available
+    let enrichedInput = input
+    if (linkedProject) {
+      const componentsSummary = linkedProject.components?.map(c => `- ${c.label} (${c.type}): ${c.systemPrompt || 'No prompt'}`).join('\n')
+      enrichedInput = `CONTEXT: You are helping with the project "${linkedProject.name}".\n` +
+                      `PROJECT COMPONENTS:\n${componentsSummary}\n\n` +
+                      `USER QUESTION/OUTPUT:\n${input}`
+    }
+
     try {
-      const res = await analyzeWithCompanion(input, effectiveType, mode)
+      const res = await analyzeWithCompanion(enrichedInput, effectiveType, mode)
       setResult(res)
 
       // Save to history
