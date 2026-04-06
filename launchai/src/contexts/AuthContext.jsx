@@ -8,7 +8,7 @@ export const AuthProvider = ({ children }) => {
   const [profile, setProfile] = useState(null)
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
-  const initialized = useRef(false)
+  const loadingTimeout = useRef(null)
 
   const fetchProfile = async (userId) => {
     if (!supabase) return;
@@ -29,84 +29,68 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     console.log('🔄 [AUTH PROVIDER] Initializing...')
     
-    // Safety check: if supabase client failed to initialize or is not configured
     if (!supabaseConfigured || !supabase || !supabase.auth) {
       console.warn('⚠️ [AUTH PROVIDER] Skipping auth initialization (Supabase not configured)')
       setLoading(false)
       return
     }
 
-    // Safety timeout: Never leave the user on a loading screen for more than 6s
-    const timer = setTimeout(() => {
+    // Set a safety timeout — will be cancelled if auth resolves first
+    loadingTimeout.current = setTimeout(() => {
       console.warn('🚨 [AUTH PROVIDER] Loading timed out — forcing ready state')
       setLoading(false)
     }, 10000)
 
-    let subscription = null
-
-    try {
-      console.log('📡 [AUTH PROVIDER] Subscribing to auth state changes...')
-      // CRITICAL: Subscribe to auth changes FIRST (before getSession)
-      const { data } = supabase.auth.onAuthStateChange(
-        async (event, currentSession) => {
-          console.log('🔔 [AUTH PROVIDER] Event:', event, '| Has session:', !!currentSession)
-
-          setSession(currentSession)
-          const currentUser = currentSession?.user ?? null
-          setUser(currentUser)
-
-          if (currentUser) {
-            await fetchProfile(currentUser.id)
-          } else {
-            setProfile(null)
-          }
-
-          const hashHasToken = window.location.hash.includes('access_token=')
-          if (event === 'SIGNED_IN' && hashHasToken) {
-            window.history.replaceState(null, '', window.location.pathname + window.location.search)
-          }
-
-          // Unconditionally clear loading state on every event
-          console.log(`✅ [AUTH PROVIDER] Auth event ${event} - clearing loading state`)
-          clearTimeout(timer)
-          initialized.current = true
-          setLoading(false)
-        }
-      )
-      subscription = data?.subscription
-    } catch (err) {
-      console.error('❌ [AUTH PROVIDER] onAuthStateChange failed:', err.message)
+    // 1. Get initial session
+    supabase.auth.getSession().then(async ({ data: { session: existingSession } }) => {
+      if (existingSession) {
+        console.log('✅ [AUTH PROVIDER] Found existing session.')
+        setSession(existingSession)
+        setUser(existingSession.user)
+        await fetchProfile(existingSession.user.id)
+      } else {
+        console.log('ℹ️ [AUTH PROVIDER] No session found.')
+      }
+      
       setLoading(false)
-    }
+      if (loadingTimeout.current) clearTimeout(loadingTimeout.current)
+    }).catch(err => {
+      console.error('❌ [AUTH PROVIDER] getSession failed:', err.message)
+      setLoading(false)
+      if (loadingTimeout.current) clearTimeout(loadingTimeout.current)
+    })
 
-    // getSession() kicks off the session recovery
-    try {
-      console.log('🔍 [AUTH PROVIDER] Fetching initial session...')
-      supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
-        if (existingSession) {
-          console.log('✅ [AUTH PROVIDER] Found existing session.')
-          setSession(existingSession)
-          setUser(existingSession.user)
-          fetchProfile(existingSession.user.id)
-        } else {
-          console.log('ℹ : [AUTH PROVIDER] No session found.')
-        }
+    // 2. Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, currentSession) => {
+        console.log(`🔔 [AUTH PROVIDER] Event: ${event} | Has session: ${!!currentSession}`)
         
-        clearTimeout(timer)
-        initialized.current = true
+        setSession(currentSession)
+        const currentUser = currentSession?.user ?? null
+        setUser(currentUser)
+
+        if (currentUser) {
+          await fetchProfile(currentUser.id)
+        } else {
+          setProfile(null)
+        }
+
+        const hashHasToken = window.location.hash.includes('access_token=')
+        if (event === 'SIGNED_IN' && hashHasToken) {
+          window.history.replaceState(null, '', window.location.pathname + window.location.search)
+        }
+
         setLoading(false)
-      }).catch(err => {
-        console.error('❌ [AUTH PROVIDER] getSession failed:', err.message)
-        setLoading(false)
-      })
-    } catch (err) {
-      console.error('❌ [AUTH PROVIDER] getSession sync error:', err.message)
-      setLoading(false)
-    }
+        if (loadingTimeout.current) {
+          clearTimeout(loadingTimeout.current)
+          loadingTimeout.current = null
+        }
+      }
+    )
 
     return () => {
-      clearTimeout(timer)
       if (subscription) subscription.unsubscribe()
+      if (loadingTimeout.current) clearTimeout(loadingTimeout.current)
     }
   }, [])
 
