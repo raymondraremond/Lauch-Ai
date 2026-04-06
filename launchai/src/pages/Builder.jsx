@@ -267,7 +267,7 @@ export default function Builder() {
     setComponents(newComponents)
   }
 
-  const handleSave = useCallback(async () => {
+  const handleSave = useCallback(async (silent = false) => {
     setIsSaving(true)
     const p = {
       id: projectIdState,
@@ -282,12 +282,17 @@ export default function Builder() {
         // Update URL without reload to reflect new ID
         window.history.replaceState(null, '', `/builder?id=${saved.id}`)
       }
-      setSaveSuccess(true)
-      setTimeout(() => setSaveSuccess(false), 2000)
+      if (!silent) {
+        setSaveSuccess(true)
+        setTimeout(() => setSaveSuccess(false), 2000)
+      }
       return saved
     } catch (err) {
       console.error('Failed to save project:', err)
-      alert('Failed to save project: ' + (err.message || 'Please check your connection and login status.'))
+      if (!silent) {
+        alert('Failed to save project: ' + (err.message || 'Please check your connection and login status.'))
+      }
+      throw err; // throw so the caller knows it failed
     } finally {
       setIsSaving(false)
     }
@@ -698,7 +703,7 @@ export default function App() {
                   let passId = projectIdState;
                   if (!passId) {
                     try {
-                      const saved = await handleSave();
+                      const saved = await handleSave(true);
                       if (saved?.id) passId = saved.id;
                     } catch (err) {
                       console.warn("Could not save before companion handoff, proceeding as draft", err);
@@ -711,9 +716,33 @@ export default function App() {
               >
                 <Compass size={14} /> <span className="hidden sm:inline">Get help</span>
               </button>
-              <button onClick={() => setShowPreview(v => !v)} className={`flex items-center gap-[6px] text-[13px] px-[12px] py-[6px] rounded-[6px] border transition-colors duration-150 ${showPreview ? 'bg-accent-dim border-accent/40 text-accent font-medium' : 'border-base text-secondary hover:text-primary bg-raised hover:border-lit'}`}><Eye size={14} /> <span className="hidden sm:inline">{showPreview ? 'Edit' : 'Preview'}</span></button>
-              <button onClick={handleSave} disabled={isSaving} className="flex items-center gap-[6px] text-[13px] px-[12px] py-[6px] rounded-[6px] border border-base bg-raised text-secondary hover:text-primary hover:border-lit transition-colors duration-150 disabled:opacity-50"><Save size={14} /> <span className="hidden sm:inline">Save</span></button>
-              <button onClick={() => { handleSave().then(s => { if (s) navigate(`/deploy?id=${s.id}`) }) }} className="btn-primary text-[13px] px-[16px] py-[6px] !rounded-[6px]"><Rocket size={14} /> <span className="hidden sm:inline">Deploy</span></button>
+              <button 
+                onClick={() => setShowPreview(v => !v)} 
+                className={`flex items-center gap-[6px] text-[13px] px-[12px] py-[6px] rounded-[6px] border transition-colors duration-150 ${showPreview ? 'bg-accent-dim border-accent/40 text-accent font-medium' : 'border-base text-secondary hover:text-primary bg-raised hover:border-lit'}`}
+              >
+                <Eye size={14} /> <span className="hidden sm:inline">{showPreview ? 'Edit' : 'Preview'}</span>
+              </button>
+              <button 
+                onClick={() => handleSave(false)} 
+                disabled={isSaving} 
+                className="flex items-center gap-[6px] text-[13px] px-[12px] py-[6px] rounded-[6px] border border-base bg-raised text-secondary hover:text-primary hover:border-lit transition-colors duration-150 disabled:opacity-50"
+              >
+                <Save size={14} /> <span className="hidden sm:inline">Save</span>
+              </button>
+              <button 
+                onClick={async () => {
+                  try {
+                    const s = await handleSave(true);
+                    if (s && s.id) navigate(`/deploy?id=${s.id}`);
+                  } catch(e) {
+                    // Fall back to just deploying directly if save fails
+                    navigate('/deploy');
+                  }
+                }} 
+                className="btn-primary text-[13px] px-[16px] py-[6px] !rounded-[6px]"
+              >
+                <Rocket size={14} /> <span className="hidden sm:inline">Deploy</span>
+              </button>
             </div>
           </div>
 
