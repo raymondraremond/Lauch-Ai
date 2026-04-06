@@ -179,8 +179,8 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      // Use stable 1.5-flash as the default generation engine
-      const activeModel = model === 'gemini-2.5-flash' ? 'gemini-1.5-flash' : (model || 'gemini-1.5-flash');
+      // Use the model provided by the client, defaulting to gemini-2.5-flash as per AIConfig.js
+      const activeModel = model || 'gemini-2.5-flash';
 
       try {
         const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${apiKey}`, {
@@ -244,8 +244,8 @@ const server = http.createServer(async (req, res) => {
           contents = [{ role: 'user', parts: [{ text: `Critique "${projectTitle}": ${projectDescription}` }] }];
         }
 
-        // Use stable Pro 1.5 for reasoning
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`, {
+        // Use Gemini 3.1 Pro for reasoning as per AIConfig.js
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -286,7 +286,7 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+      const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
